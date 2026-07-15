@@ -1,0 +1,191 @@
+/* ========== 响应式：平板 ========== */
+@media (max-width: 1024px) {
+  #content {
+    padding: 20px 24px;
+  }
+
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+
+  .split-panel {
+    grid-template-columns: 240px 1fr;
+  }
+}
+
+/* ========== 响应式：手机 ========== */
+@media (max-width: 768px) {
+  :root {
+    --sidebar-width: 0px;
+  }
+
+  /* 隐藏侧边栏 */
+  #sidebar {
+    display: none;
+  }
+
+  /* 主内容区全屏 */
+  #content {
+    margin-left: 0;
+    padding: 16px;
+    padding-bottom: calc(var(--bottom-nav-height) + 16px);
+    max-width: 100%;
+  }
+
+  #view {
+    max-width: 100%;
+  }
+
+  /* 显示底部导航 */
+  #bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--bottom-nav-height);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 100;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0 4px;
+    /* iOS safe area */
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  #bottom-nav .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    color: var(--text-muted);
+    transition: color var(--transition);
+    flex: 1;
+    padding: 6px 0;
+  }
+
+  #bottom-nav .nav-item.active {
+    color: var(--primary);
+  }
+
+  #bottom-nav .nav-icon { font-size: 20px; }
+  #bottom-nav .nav-label { font-size: 11px; }
+
+  /* 更多菜单 */
+  .more-overlay {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 200;
+    align-items: flex-end;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .more-overlay.hidden { display: none; }
+
+  .more-sheet {
+    background: var(--surface);
+    width: 100%;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: 8px 0 24px;
+    animation: slideUpSheet 0.3s ease;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0));
+  }
+
+  @keyframes slideUpSheet {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .more-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .more-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    color: var(--text);
+    transition: background var(--transition);
+    width: 100%;
+    text-align: left;
+    font-size: 15px;
+  }
+
+  .more-item:hover { background: var(--surface-hover); }
+  .more-item span:first-child { font-size: 20px; width: 28px; text-align: center; }
+
+  .more-sheet hr {
+    border: none;
+    border-top: 1px solid var(--border-light);
+    margin: 8px 0;
+  }
+
+  /* 网格变单列 */
+  .grid-2, .grid-3, .grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  /* 分屏变堆叠 */
+  .split-panel {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .split-panel-left {
+    max-height: 200px;
+    margin-bottom: 16px;
+  }
+
+  .split-panel-right {
+    min-height: 400px;
+  }
+
+  /* 页面标题 */
+  .page-title { font-size: 20px; }
+
+  /* Modal 全屏 */
+  .modal {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: var(--radius) var(--radius) 0 0;
+    margin: 0;
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  /* 卡片间距缩小 */
+  .card { padding: 16px; }
+
+  /* 表单输入框更大触摸区 */
+  .form-input, .form-textarea, .form-select {
+    padding: 12px 14px;
+    font-size: 16px; /* 防止 iOS 缩放 */
+  }
+
+  .btn { padding: 10px 16px; }
+
+  /* 搜索框 */
+  .search-box input { font-size: 16px; }
+
+  /* 天气温度 */
+  .weather-temp { font-size: 28px; }
+  .weather-icon { font-size: 40px; }
+}
+
+/* ========== 超小屏幕 ========== */
+@media (max-width: 380px) {
+  body { font-size: 14px; }
+  #content { padding: 12px; }
+  .card { padding: 14px; }
+}

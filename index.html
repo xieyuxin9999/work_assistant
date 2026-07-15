@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4a6fa5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>每日助手</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 左侧边栏（桌面端） -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <span class="logo">📋</span>
+        <h1>每日助手</h1>
+      </div>
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <a href="#/dashboard" class="nav-item" data-route="dashboard">
+          <span class="nav-icon">🏠</span><span class="nav-label">仪表盘</span>
+        </a>
+        <a href="#/todo" class="nav-item" data-route="todo">
+          <span class="nav-icon">✅</span><span class="nav-label">待办事项</span>
+        </a>
+        <a href="#/notes" class="nav-item" data-route="notes">
+          <span class="nav-icon">📝</span><span class="nav-label">工作笔记</span>
+        </a>
+        <a href="#/meetings" class="nav-item" data-route="meetings">
+          <span class="nav-icon">👥</span><span class="nav-label">会议记录</span>
+        </a>
+        <a href="#/files" class="nav-item" data-route="files">
+          <span class="nav-icon">📁</span><span class="nav-label">文件管理</span>
+        </a>
+        <a href="#/habits" class="nav-item" data-route="habits">
+          <span class="nav-icon">💪</span><span class="nav-label">健康打卡</span>
+        </a>
+        <a href="#/checklist" class="nav-item" data-route="checklist">
+          <span class="nav-icon">🎒</span><span class="nav-label">上班物品</span>
+        </a>
+        <a href="#/weather" class="nav-item" data-route="weather">
+          <span class="nav-icon">🌤️</span><span class="nav-label">天气预报</span>
+        </a>
+        <a href="#/trash" class="nav-item" data-route="trash">
+          <span class="nav-icon">🗑️</span><span class="nav-label">垃圾箱</span>
+        </a>
+        <a href="#/settings" class="nav-item" data-route="settings">
+          <span class="nav-icon">⚙️</span><span class="nav-label">设置</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn-text" id="export-btn">📦 导出数据</button>
+        <button class="btn-text" id="import-btn">📥 导入数据</button>
+        <input type="file" id="import-input" accept=".json" style="display:none">
+      </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main id="content">
+      <div id="view"></div>
+    </main>
+  </div>
+
+  <!-- 底部导航（移动端） -->
+  <nav id="bottom-nav">
+    <a href="#/dashboard" class="nav-item" data-route="dashboard">
+      <span class="nav-icon">🏠</span><span class="nav-label">首页</span>
+    </a>
+    <a href="#/todo" class="nav-item" data-route="todo">
+      <span class="nav-icon">✅</span><span class="nav-label">待办</span>
+    </a>
+    <a href="#/notes" class="nav-item" data-route="notes">
+      <span class="nav-icon">📝</span><span class="nav-label">笔记</span>
+    </a>
+    <a href="#/habits" class="nav-item" data-route="habits">
+      <span class="nav-icon">💪</span><span class="nav-label">打卡</span>
+    </a>
+    <a href="#/more" class="nav-item" data-route="more">
+      <span class="nav-icon">⋯</span><span class="nav-label">更多</span>
+    </a>
+  </nav>
+
+  <!-- 更多菜单（移动端） -->
+  <div id="more-overlay" class="more-overlay hidden">
+    <div class="more-sheet">
+      <div class="more-sheet-header">
+        <span>更多功能</span>
+        <button class="btn-icon" id="more-close">✕</button>
+      </div>
+      <a href="#/meetings" class="more-item"><span>👥</span> 会议记录</a>
+      <a href="#/checklist" class="more-item"><span>🎒</span> 上班物品</a>
+      <a href="#/weather" class="more-item"><span>🌤️</span> 天气预报</a>
+      <a href="#/trash" class="more-item"><span>🗑️</span> 垃圾箱</a>
+      <a href="#/settings" class="more-item"><span>⚙️</span> 设置</a>
+      <hr>
+      <button class="more-item" id="export-btn-mobile"><span>📦</span> 导出数据</button>
+      <button class="more-item" id="import-btn-mobile"><span>📥</span> 导入数据</button>
+    </div>
+  </div>
+
+  <!-- Toast 通知 -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Modal 容器 -->
+  <div id="modal-container"></div>
+
+  <script src="lib/marked.min.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/crypto.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/modules/dashboard.js"></script>
+  <script src="js/modules/weather.js"></script>
+  <script src="js/modules/checklist.js"></script>
+  <script src="js/modules/todo.js"></script>
+  <script src="js/modules/notes.js"></script>
+  <script src="js/modules/meetings.js"></script>
+  <script src="js/modules/files.js"></script>
+  <script src="js/modules/habits.js"></script>
+  <script src="js/modules/settings.js"></script>
+  <script src="js/modules/trash.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
