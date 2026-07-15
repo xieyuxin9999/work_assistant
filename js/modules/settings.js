@@ -30,7 +30,7 @@ window.Modules.Settings = {
           <div class="card-title">☁️ 数据同步</div>
           ${syncStatus.configured ?
             `<span class="tag ${syncStatus.lastSyncTime ? 'tag-success' : ''}">${Sync.formatSyncTime(syncStatus.lastSyncTime)}</span>` :
-            '<span class="tag tag-warning">未配置</span>'
+            '<span class="tag tag-warning">未登录</span>'
           }
         </div>
 
@@ -42,36 +42,61 @@ window.Modules.Settings = {
 
           <div class="flex gap-8" style="flex-wrap:wrap">
             <button class="btn btn-primary" id="sync-now">🔄 立即同步</button>
-            <button class="btn btn-secondary" id="sync-show-code">📱 显示同步码</button>
+            <button class="btn btn-secondary" id="sync-show-id">📱 显示同步ID</button>
             <button class="btn btn-secondary" id="sync-toggle-auto">
               ${syncStatus.autoSync ? '关闭自动同步' : '开启自动同步'}
             </button>
             <button class="btn btn-secondary" id="sync-change-pwd">修改密码</button>
-            <button class="btn btn-ghost" id="sync-disconnect" style="color:var(--danger)">断开连接</button>
+            <button class="btn btn-ghost" id="sync-disconnect" style="color:var(--danger)">退出登录</button>
           </div>
 
           <div class="text-muted mt-12" style="font-size:12px">
             同步范围：待办、笔记、会议记录、习惯打卡、上班物品、设置（不含文件管理）
           </div>
         ` : `
-          <p class="text-secondary mb-16" style="font-size:14px;line-height:1.7">
-            通过 GitHub Gist 加密同步你的数据。数据用主密码 AES-GCM 加密后上传，
-            即使 Token 泄露，数据也是密文。
-          </p>
-
-          <div class="flex gap-8 mb-16">
-            <button class="btn btn-primary btn-lg" id="sync-create">🆕 创建同步（第一台设备）</button>
-            <button class="btn btn-secondary btn-lg" id="sync-connect">🔗 连接同步（其他设备）</button>
+          <div id="sync-login-view">
+            <!-- 登录表单 -->
+            <div class="form-group">
+              <label class="form-label">同步ID</label>
+              <input type="text" class="form-input" id="login-sync-id" placeholder="粘贴同步ID"
+                     style="font-family:'SF Mono',Monaco,monospace;font-size:13px">
+            </div>
+            <div class="form-group">
+              <label class="form-label">密码</label>
+              <input type="password" class="form-input" id="login-password" placeholder="输入密码">
+            </div>
+            <button class="btn btn-primary btn-block btn-lg" id="sync-login-btn" style="margin-bottom:12px">登录同步</button>
+            <div style="text-align:center">
+              <a href="javascript:void(0)" id="sync-show-create" style="font-size:13px;color:var(--primary)">首次使用？创建新同步 →</a>
+            </div>
           </div>
 
-          <details class="text-muted" style="font-size:13px">
-            <summary style="cursor:pointer;color:var(--primary)">使用说明</summary>
-            <div style="margin-top:12px;line-height:1.8">
-              <p><strong>第一步</strong>：在 GitHub Settings → Developer settings → Personal access tokens → Tokens (classic) 创建一个 Token，勾选 <code>gist</code> 权限。</p>
-              <p><strong>第二台设备</strong>：点「连接同步」，输入第一台设备生成的同步码和相同的主密码即可。</p>
-              <p><strong>注意</strong>：主密码用于加密，请牢记。丢失密码无法恢复数据。Token 和密码仅存储在本地。</p>
+          <!-- 创建表单（默认隐藏） -->
+          <div id="sync-create-view" style="display:none">
+            <div class="form-group">
+              <label class="form-label">GitHub Token</label>
+              <input type="password" class="form-input" id="create-token" placeholder="ghp_xxxxxxxx"
+                     style="font-family:'SF Mono',Monaco,monospace;font-size:13px">
+              <div class="text-muted mt-4" style="font-size:12px">
+                GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)，勾选 <code>gist</code> 权限
+              </div>
             </div>
-          </details>
+            <div class="form-group">
+              <label class="form-label">设置密码</label>
+              <input type="password" class="form-input" id="create-password" placeholder="至少 6 位">
+            </div>
+            <div class="form-group">
+              <label class="form-label">确认密码</label>
+              <input type="password" class="form-input" id="create-password-confirm" placeholder="再次输入">
+            </div>
+            <button class="btn btn-primary btn-block btn-lg" id="sync-create-btn" style="margin-bottom:12px">创建同步</button>
+            <div style="text-align:center">
+              <a href="javascript:void(0)" id="sync-back-login" style="font-size:13px;color:var(--primary)">← 返回登录</a>
+            </div>
+            <div class="text-muted mt-12" style="font-size:12px;line-height:1.6">
+              创建后会生成一个「同步ID」，在其他设备上用这个 ID + 密码即可登录。
+            </div>
+          </div>
         `}
       </div>
 
@@ -131,18 +156,33 @@ window.Modules.Settings = {
   },
 
   async init() {
-    // 同步操作
-    const createBtn = document.getElementById('sync-create');
-    if (createBtn) createBtn.addEventListener('click', () => this._showCreateDialog());
+    // 登录/创建切换
+    const showCreate = document.getElementById('sync-show-create');
+    if (showCreate) showCreate.addEventListener('click', () => {
+      document.getElementById('sync-login-view').style.display = 'none';
+      document.getElementById('sync-create-view').style.display = '';
+    });
 
-    const connectBtn = document.getElementById('sync-connect');
-    if (connectBtn) connectBtn.addEventListener('click', () => this._showConnectDialog());
+    const backLogin = document.getElementById('sync-back-login');
+    if (backLogin) backLogin.addEventListener('click', () => {
+      document.getElementById('sync-create-view').style.display = 'none';
+      document.getElementById('sync-login-view').style.display = '';
+    });
 
+    // 登录按钮
+    const loginBtn = document.getElementById('sync-login-btn');
+    if (loginBtn) loginBtn.addEventListener('click', () => this._login());
+
+    // 创建按钮
+    const createBtn = document.getElementById('sync-create-btn');
+    if (createBtn) createBtn.addEventListener('click', () => this._create());
+
+    // 已配置状态的操作
     const syncNow = document.getElementById('sync-now');
     if (syncNow) syncNow.addEventListener('click', () => this._doSync());
 
-    const showCode = document.getElementById('sync-show-code');
-    if (showCode) showCode.addEventListener('click', () => this._showSyncCode());
+    const showId = document.getElementById('sync-show-id');
+    if (showId) showId.addEventListener('click', () => this._showSyncId());
 
     const toggleAuto = document.getElementById('sync-toggle-auto');
     if (toggleAuto) toggleAuto.addEventListener('click', () => this._toggleAutoSync());
@@ -163,109 +203,68 @@ window.Modules.Settings = {
     if (importInput) importInput.addEventListener('change', (e) => App._importData(e.target.files[0]));
   },
 
-  _showCreateDialog() {
-    // 检查 Web Crypto API 是否可用（非 HTTPS / 非 localhost 环境下不可用）
+  // ====== 登录（用同步ID + 密码） ======
+
+  _login() {
     if (!window.crypto || !window.crypto.subtle) {
-      App.toast('加密 API 不可用，请通过 http://localhost:8080 访问');
+      App.toast('加密 API 不可用，请通过 HTTPS 地址访问');
       return;
     }
 
-    App.openModal({
-      title: '创建同步',
-      body: `
-        <div class="form-group">
-          <label class="form-label">GitHub Personal Access Token</label>
-          <input type="password" class="form-input" id="sync-token" placeholder="ghp_xxxxxxxx"
-                 style="font-family:'SF Mono',Monaco,monospace;font-size:13px">
-          <div class="text-muted mt-4" style="font-size:12px">
-            在 GitHub Settings → Developer settings → Personal access tokens 创建，需勾选 <code>gist</code> 权限
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">主密码（用于加密数据）</label>
-          <input type="password" class="form-input" id="sync-password" placeholder="至少 6 位">
-          <div class="text-muted mt-4" style="font-size:12px">
-            此密码用于加密所有同步数据，请牢记。丢失后无法恢复。
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">确认密码</label>
-          <input type="password" class="form-input" id="sync-password-confirm" placeholder="再次输入">
-        </div>
-      `,
-      confirmText: '创建',
-      onConfirm: async () => {
-        const token = document.getElementById('sync-token').value.trim();
-        const pwd = document.getElementById('sync-password').value;
-        const pwdConfirm = document.getElementById('sync-password-confirm').value;
+    const code = document.getElementById('login-sync-id').value.trim();
+    const pwd = document.getElementById('login-password').value;
 
-        if (!token) { App.toast('请输入 Token'); return; }
-        if (pwd.length < 6) { App.toast('密码至少 6 位'); return; }
-        if (pwd !== pwdConfirm) { App.toast('两次密码不一致'); return; }
+    if (!code) { App.toast('请输入同步ID'); return; }
+    if (!pwd) { App.toast('请输入密码'); return; }
 
-        App.closeModal();
-        App.toast('正在创建...');
-        try {
-          const gistId = await Sync.createGist(token, pwd);
-          await this._doSync();
-          this._showSyncCode();
-        } catch (e) {
-          App.toast('创建失败: ' + e.message);
-        }
+    const parsed = this._parseSyncId(code);
+    if (!parsed) { App.toast('同步ID格式错误'); return; }
+
+    App.toast('正在连接...');
+    (async () => {
+      try {
+        await Sync.connectGist(parsed.gistId, parsed.token, pwd);
+        App.toast('登录成功！正在同步...');
+        await this._doSync();
+        this._reload();
+      } catch (e) {
+        App.toast('登录失败: ' + e.message);
       }
-    });
+    })();
   },
 
-  _showConnectDialog() {
+  // ====== 创建同步（首次使用） ======
+
+  _create() {
     if (!window.crypto || !window.crypto.subtle) {
-      App.toast('加密 API 不可用，请通过 http://localhost:8080 访问');
+      App.toast('加密 API 不可用，请通过 HTTPS 地址访问');
       return;
     }
 
-    App.openModal({
-      title: '连接同步',
-      body: `
-        <div class="form-group">
-          <label class="form-label">同步码</label>
-          <textarea class="form-input" id="sync-code" rows="3" placeholder="粘贴从第一台设备获取的同步码"
-                 style="font-family:'SF Mono',Monaco,monospace;font-size:12px;resize:none"></textarea>
-          <div class="text-muted mt-4" style="font-size:12px">
-            在第一台设备的「设置 → 显示同步码」中获取
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">主密码（与创建时相同）</label>
-          <input type="password" class="form-input" id="sync-password" placeholder="输入主密码">
-        </div>
-      `,
-      confirmText: '连接',
-      onConfirm: async () => {
-        const code = document.getElementById('sync-code').value.trim();
-        const pwd = document.getElementById('sync-password').value;
+    const token = document.getElementById('create-token').value.trim();
+    const pwd = document.getElementById('create-password').value;
+    const pwdConfirm = document.getElementById('create-password-confirm').value;
 
-        if (!code || !pwd) { App.toast('请填写所有字段'); return; }
+    if (!token) { App.toast('请输入 Token'); return; }
+    if (pwd.length < 6) { App.toast('密码至少 6 位'); return; }
+    if (pwd !== pwdConfirm) { App.toast('两次密码不一致'); return; }
 
-        const parsed = this._parseSyncCode(code);
-        if (!parsed) { App.toast('同步码格式错误'); return; }
-
-        App.closeModal();
-        App.toast('正在连接...');
-        try {
-          await Sync.connectGist(parsed.gistId, parsed.token, pwd);
-          App.toast('连接成功！正在同步...');
-          await this._doSync();
-          this._reload();
-        } catch (e) {
-          App.toast('连接失败: ' + e.message);
-        }
+    App.toast('正在创建...');
+    (async () => {
+      try {
+        await Sync.createGist(token, pwd);
+        await this._doSync();
+        this._showSyncId();
+      } catch (e) {
+        App.toast('创建失败: ' + e.message);
       }
-    });
+    })();
   },
 
   async _doSync() {
     const config = Sync.getConfig();
     if (!config.savedPassword) {
-      App.toast('请先配置同步');
+      App.toast('请先登录同步');
       return;
     }
 
@@ -274,7 +273,6 @@ window.Modules.Settings = {
     if (result.success) {
       App.toast('同步成功 ✅');
       this._reload();
-      // 刷新当前视图
       if (Router.currentRoute && Router.currentRoute !== '/settings') {
         Router.handle();
       }
@@ -299,7 +297,7 @@ window.Modules.Settings = {
       body: `
         <div class="form-group">
           <label class="form-label">当前密码</label>
-          <input type="password" class="form-input" id="pwd-old" placeholder="当前主密码">
+          <input type="password" class="form-input" id="pwd-old" placeholder="当前密码">
         </div>
         <div class="form-group">
           <label class="form-label">新密码</label>
@@ -324,7 +322,6 @@ window.Modules.Settings = {
         if (newPwd.length < 6) { App.toast('新密码至少 6 位'); return; }
         if (newPwd !== newPwdConfirm) { App.toast('两次密码不一致'); return; }
 
-        // 更新密码和 salt
         const { salt } = await Crypto.deriveKey(newPwd);
         config.salt = salt;
         config.savedPassword = newPwd;
@@ -338,30 +335,32 @@ window.Modules.Settings = {
   },
 
   _disconnect() {
-    if (!confirm('断开同步连接？本地数据不会丢失，但不再自动同步。')) return;
+    if (!confirm('退出同步登录？本地数据不会丢失，但不再自动同步。')) return;
     Sync.disconnect();
-    App.toast('已断开同步');
+    App.toast('已退出登录');
     this._reload();
   },
 
-  _showSyncCode() {
+  // ====== 同步ID 显示/复制 ======
+
+  _showSyncId() {
     const config = Sync.getConfig();
     if (!config.gistId || !config.token) {
       App.toast('同步未配置');
       return;
     }
-    const code = this._generateSyncCode(config.gistId, config.token);
+    const id = this._generateSyncId(config.gistId, config.token);
     App.openModal({
-      title: '📱 同步码',
+      title: '📱 你的同步ID',
       body: `
         <div class="text-secondary mb-12" style="font-size:13px;line-height:1.6">
-          将以下同步码发给你的其他设备，在「连接同步」中粘贴即可。<br>
-          同步码包含 Gist ID 和 Token，但数据已加密，无密码无法解密。
+          在其他设备上打开此应用，输入这个同步ID + 密码即可登录。<br>
+          <strong>密码就是创建时设置的密码。</strong>
         </div>
-        <textarea id="sync-code-display" rows="4" readonly
-          style="width:100%;font-family:'SF Mono',Monaco,monospace;font-size:11px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-secondary);word-break:break-all;resize:none">${code}</textarea>
+        <textarea id="sync-id-display" rows="4" readonly
+          style="width:100%;font-family:'SF Mono',Monaco,monospace;font-size:11px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-secondary);word-break:break-all;resize:none">${id}</textarea>
         <div class="flex gap-8 mt-12">
-          <button class="btn btn-primary" id="copy-sync-code">📋 复制同步码</button>
+          <button class="btn btn-primary" id="copy-sync-id">📋 复制同步ID</button>
         </div>
       `,
       confirmText: '关闭',
@@ -371,9 +370,9 @@ window.Modules.Settings = {
       }
     });
     setTimeout(() => {
-      const copyBtn = document.getElementById('copy-sync-code');
+      const copyBtn = document.getElementById('copy-sync-id');
       if (copyBtn) copyBtn.addEventListener('click', () => {
-        const textarea = document.getElementById('sync-code-display');
+        const textarea = document.getElementById('sync-id-display');
         textarea.select();
         document.execCommand('copy');
         App.toast('已复制到剪贴板');
@@ -381,11 +380,13 @@ window.Modules.Settings = {
     }, 100);
   },
 
-  _generateSyncCode(gistId, token) {
+  // ====== 同步ID 编解码 ======
+
+  _generateSyncId(gistId, token) {
     return btoa(gistId + '|' + token);
   },
 
-  _parseSyncCode(code) {
+  _parseSyncId(code) {
     try {
       const decoded = atob(code.trim());
       const parts = decoded.split('|');
