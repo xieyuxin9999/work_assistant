@@ -29,7 +29,8 @@ const App = {
     // 全局事件
     this._bindGlobalEvents();
 
-    // 自动同步（如果已配置）
+    // 迁移旧配置（补全 username）+ 自动同步
+    await Sync.migrateConfig();
     this._autoSync();
 
     // 注册 Service Worker
