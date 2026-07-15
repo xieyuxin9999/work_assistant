@@ -1,15 +1,20 @@
 /**
  * Sync.js — GitHub Gist 加密同步引擎
- * 数据加密后上传到私有 Gist，支持多设备合并同步
+ * 基于 GitHub 用户名的统一认证模型
+ * - 注册：用户名 + Token + 密码 → 创建公开 Gist（数据加密）
+ * - 登录：用户名 + 密码 → 查找公开 Gist → 解密拿 Token
+ * - 日常：自动同步，无需输入
  */
 const Sync = {
   _isSyncing: false,
   GIST_API: 'https://api.github.com/gists',
+  GIST_DESCRIPTION: 'work-assistant-sync',
 
   // ====== 配置管理 ======
 
   getConfig() {
     return Store.get('syncConfig', {
+      username: null,
       gistId: null,
       token: null,
       deviceId: null,
@@ -18,6 +23,7 @@ const Sync = {
       lastSyncTime: null,
       autoSync: true,
       rememberPassword: true,
+      gistMigrated: false,
     });
   },
 
@@ -30,17 +36,73 @@ const Sync = {
     return !!(c.gistId && c.token && c.savedPassword);
   },
 
-  // ====== 首次设置 ======
+  // ====== 迁移：旧配置补全 username ======
+
+  async migrateConfig() {
+    const config = this.getConfig();
+    // 旧配置有 gistId + token 但没有 username
+    if (config.gistId && config.token && !config.username) {
+      try {
+        const resp = await fetch('https://api.github.com/user', {
+          headers: {
+            'Authorization': `token ${config.token}`,
+            'Accept': 'application/vnd.github.v3+json',
+          },
+        });
+        if (resp.ok) {
+          const user = await resp.json();
+          config.username = user.login;
+          this.setConfig(config);
+        }
+      } catch (e) {
+        // 非关键，下次重试
+      }
+    }
+  },
+
+  // ====== 通过用户名查找同步 Gist（无需认证） ======
+
+  async findGistByUsername(username) {
+    const resp = await fetch(`https://api.github.com/users/${username}/gists?per_page=100`, {
+      headers: { 'Accept': 'application/vnd.github.v3+json' },
+    });
+
+    if (resp.status === 404) {
+      throw new Error(`GitHub 用户 "${username}" 不存在`);
+    }
+    if (!resp.ok) {
+      throw new Error(`查询失败: HTTP ${resp.status}`);
+    }
+
+    const gists = await resp.json();
+    // 查找描述匹配的 Gist（兼容旧描述）
+    const syncGist = gists.find(g =>
+      g.description === this.GIST_DESCRIPTION ||
+      g.description === 'Personal Dashboard Sync (Encrypted)'
+    );
+
+    if (!syncGist) {
+      throw new Error(`用户 "${username}" 没有同步账号，请先注册`);
+    }
+
+    return syncGist.id;
+  },
+
+  // ====== 注册（首次创建，设备 1） ======
 
   /**
-   * 创建新的同步 Gist（设备 1）
+   * 注册新账号：创建公开 Gist，加密存储数据 + Token
    */
-  async createGist(token, password) {
+  async createGist(username, token, password) {
     const deviceId = Crypto.generateDeviceId();
     const { salt } = await Crypto.deriveKey(password);
 
-    // 先用空数据占位创建 Gist
-    const placeholder = JSON.stringify({ version: 1, placeholder: true, createdAt: new Date().toISOString() });
+    // 占位数据（随后立即推送加密数据）
+    const placeholder = JSON.stringify({
+      version: 2,
+      placeholder: true,
+      createdAt: new Date().toISOString(),
+    });
 
     const resp = await fetch(this.GIST_API, {
       method: 'POST',
@@ -49,8 +111,8 @@ const Sync = {
         'Accept': 'application/vnd.github.v3+json',
       },
       body: JSON.stringify({
-        description: 'Personal Dashboard Sync (Encrypted)',
-        public: false,
+        description: this.GIST_DESCRIPTION,
+        public: true,
         files: { 'sync-data.json': { content: placeholder } },
       }),
     });
@@ -63,6 +125,7 @@ const Sync = {
     const gist = await resp.json();
 
     this.setConfig({
+      username,
       gistId: gist.id,
       token,
       deviceId,
@@ -71,54 +134,72 @@ const Sync = {
       lastSyncTime: null,
       autoSync: true,
       rememberPassword: true,
+      gistMigrated: true,
     });
 
     return gist.id;
   },
 
+  // ====== 登录（设备 2+，只需用户名 + 密码） ======
+
   /**
-   * 连接已有 Gist（设备 2+）
+   * 通过用户名 + 密码登录：
+   * 1. 查找用户的公开同步 Gist
+   * 2. 拉取 Gist 内容（无需认证）
+   * 3. 解密获取数据 + Token
    */
-  async connectGist(gistId, token, password) {
-    // 验证能访问 Gist
+  async connectGist(username, password) {
+    // 1. 查找同步 Gist
+    const gistId = await this.findGistByUsername(username);
+
+    // 2. 拉取 Gist（公开 Gist 无需认证）
     const resp = await fetch(`${this.GIST_API}/${gistId}`, {
-      headers: {
-        'Authorization': `token ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
-      },
+      headers: { 'Accept': 'application/vnd.github.v3+json' },
     });
 
     if (!resp.ok) {
-      throw new Error(`无法访问 Gist: HTTP ${resp.status}`);
+      throw new Error(`无法访问同步数据: HTTP ${resp.status}`);
     }
 
     const gist = await resp.json();
-    const fileContent = gist.files?.['sync-data.json']?.content;
-    if (!fileContent) throw new Error('Gist 中没有同步数据文件');
+    const content = gist.files?.['sync-data.json']?.content;
+    if (!content) throw new Error('同步数据不存在');
 
-    const parsed = JSON.parse(fileContent);
+    const parsed = JSON.parse(content);
 
-    // 如果已有加密数据，验证密码
-    if (parsed.ciphertext && parsed.salt && parsed.iv) {
-      try {
-        await Crypto.decrypt(parsed, password);
-      } catch (e) {
-        throw new Error('密码错误，无法解密同步数据');
-      }
+    // 3. 占位数据（设备 1 还没完成首次同步）
+    if (parsed.placeholder) {
+      throw new Error('同步数据尚未就绪，请在第一台设备完成同步');
     }
 
+    // 4. 解密获取数据 + Token
+    if (!parsed.ciphertext) throw new Error('同步数据格式错误');
+
+    let data;
+    try {
+      const decrypted = await Crypto.decrypt(parsed, password);
+      data = JSON.parse(decrypted);
+    } catch (e) {
+      throw new Error('密码错误');
+    }
+
+    if (!data.syncToken) throw new Error('同步数据中缺少令牌，请在第一台设备重新同步');
+
+    // 5. 存储配置
     const deviceId = Crypto.generateDeviceId();
     const { salt } = await Crypto.deriveKey(password);
 
     this.setConfig({
+      username,
       gistId,
-      token,
+      token: data.syncToken,
       deviceId,
       salt,
       savedPassword: password,
       lastSyncTime: null,
       autoSync: true,
       rememberPassword: true,
+      gistMigrated: true,
     });
 
     return true;
@@ -126,12 +207,9 @@ const Sync = {
 
   // ====== 数据收集 ======
 
-  /**
-   * 收集所有需要同步的数据（不含文件 Blob）
-   */
   async collectSyncData() {
+    const config = this.getConfig();
     const settings = Store.getSettings();
-    // 排除天气缓存（体积大、时效性强、不需同步）
     const syncSettings = { ...settings };
     delete syncSettings.weatherCache;
     delete syncSettings.weatherCacheTime;
@@ -147,9 +225,10 @@ const Sync = {
     const meetings = await DB.getAll('meetings');
 
     return {
-      version: 1,
+      version: 2,
       timestamp: Date.now(),
-      deviceId: this.getConfig().deviceId,
+      deviceId: config.deviceId,
+      syncToken: config.token,
       localData,
       idbData: { notes, meetings },
     };
@@ -157,9 +236,6 @@ const Sync = {
 
   // ====== 合并逻辑 ======
 
-  /**
-   * 按 ID + updatedAt 合并两个数组
-   */
   _mergeArrays(local, remote) {
     const map = new Map();
     (local || []).forEach(item => {
@@ -171,7 +247,6 @@ const Sync = {
       if (!existing) {
         map.set(item.id, item);
       } else {
-        // updatedAt 较新的优先
         const lTime = existing.updatedAt || existing.createdAt || 0;
         const rTime = item.updatedAt || item.createdAt || 0;
         if (rTime > lTime) {
@@ -182,9 +257,6 @@ const Sync = {
     return Array.from(map.values());
   },
 
-  /**
-   * 合并 checklist（单对象，按 updatedAt 取新）
-   */
   _mergeChecklist(local, remote) {
     if (!remote) return local;
     if (!local) return remote;
@@ -193,12 +265,8 @@ const Sync = {
     return rTime > lTime ? remote : local;
   },
 
-  /**
-   * 合并设置（取远端，但保留本地天气缓存）
-   */
   _mergeSettings(localSettings, remoteSettings) {
     const merged = { ...(remoteSettings || localSettings) };
-    // 保留本地天气缓存
     if (localSettings.weatherCache) {
       merged.weatherCache = localSettings.weatherCache;
       merged.weatherCacheTime = localSettings.weatherCacheTime;
@@ -206,36 +274,39 @@ const Sync = {
     return merged;
   },
 
-  /**
-   * 全量合并：远端 + 本地 → 合并结果
-   */
   async mergeData(remoteData) {
     const localData = await this.collectSyncData();
 
-    // 合并 localStorage 数据
+    // 如果远端数据包含 Token 且本地缺失，补全
+    if (remoteData?.syncToken) {
+      const config = this.getConfig();
+      if (!config.token) {
+        config.token = remoteData.syncToken;
+        this.setConfig(config);
+      }
+    }
+
     const mergedTodos = this._mergeArrays(localData.localData.todos, remoteData?.localData?.todos);
     const mergedHabits = this._mergeArrays(localData.localData.habits, remoteData?.localData?.habits);
     const mergedChecklist = this._mergeChecklist(localData.localData.checklist, remoteData?.localData?.checklist);
     const mergedSettings = this._mergeSettings(localData.localData.settings, remoteData?.localData?.settings);
 
-    // 合并 IndexedDB 数据
     const mergedNotes = this._mergeArrays(localData.idbData.notes, remoteData?.idbData?.notes);
     const mergedMeetings = this._mergeArrays(localData.idbData.meetings, remoteData?.idbData?.meetings);
 
-    // 写回 localStorage
     Store.setTodos(mergedTodos);
     Store.setHabits(mergedHabits);
     Store.setChecklist(mergedChecklist);
     Store.setSettings(mergedSettings);
 
-    // 写回 IndexedDB
     await DB.importStore('notes', mergedNotes);
     await DB.importStore('meetings', mergedMeetings);
 
     return {
-      version: 1,
+      version: 2,
       timestamp: Date.now(),
       deviceId: this.getConfig().deviceId,
+      syncToken: this.getConfig().token,
       localData: {
         todos: mergedTodos,
         checklist: mergedChecklist,
@@ -254,21 +325,36 @@ const Sync = {
 
     const encrypted = await Crypto.encrypt(JSON.stringify(data), password, config.salt);
 
+    const body = {
+      files: { 'sync-data.json': { content: JSON.stringify(encrypted) } },
+    };
+
+    // 迁移：确保 Gist 公开 + 描述正确（仅第一次）
+    if (!config.gistMigrated) {
+      body.public = true;
+      body.description = this.GIST_DESCRIPTION;
+    }
+
     const resp = await fetch(`${this.GIST_API}/${config.gistId}`, {
       method: 'PATCH',
       headers: {
         'Authorization': `token ${config.token}`,
         'Accept': 'application/vnd.github.v3+json',
       },
-      body: JSON.stringify({
-        files: { 'sync-data.json': { content: JSON.stringify(encrypted) } },
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
       throw new Error(err.message || `推送失败: HTTP ${resp.status}`);
     }
+
+    // 标记已迁移
+    if (!config.gistMigrated) {
+      config.gistMigrated = true;
+      this.setConfig(config);
+    }
+
     return true;
   },
 
@@ -291,10 +377,8 @@ const Sync = {
 
     const parsed = JSON.parse(content);
 
-    // 占位数据（首次创建），还没有实际同步数据
     if (parsed.placeholder) return null;
 
-    // 加密数据
     if (parsed.ciphertext) {
       const decrypted = await Crypto.decrypt(parsed, password);
       return JSON.parse(decrypted);
@@ -310,16 +394,10 @@ const Sync = {
     this._isSyncing = true;
 
     try {
-      // 1. 拉取远端
       const remote = await this.pull(password);
-
-      // 2. 合并
       const merged = await this.mergeData(remote);
-
-      // 3. 推送合并结果
       await this.push(merged, password);
 
-      // 4. 更新同步时间
       const config = this.getConfig();
       config.lastSyncTime = Date.now();
       this.setConfig(config);
@@ -333,9 +411,6 @@ const Sync = {
     }
   },
 
-  /**
-   * 自动同步（如果已配置且记住了密码）
-   */
   async autoSync() {
     const config = this.getConfig();
     if (!config.autoSync || !config.gistId || !config.token || !config.savedPassword) {
@@ -350,6 +425,7 @@ const Sync = {
     const c = this.getConfig();
     return {
       configured: !!(c.gistId && c.token),
+      username: c.username,
       deviceId: c.deviceId,
       lastSyncTime: c.lastSyncTime,
       autoSync: c.autoSync,
@@ -367,9 +443,6 @@ const Sync = {
     return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   },
 
-  /**
-   * 断开同步（只清除本地配置，不删 Gist）
-   */
   disconnect() {
     Store.remove('syncConfig');
   },
