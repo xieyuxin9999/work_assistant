@@ -247,7 +247,6 @@ window.Modules.Morning = {
   },
 
   _deleteItem(id) {
-    if (!confirm('确定删除这个物品吗？')) return;
     const data = Store.getChecklist();
     data.items = data.items.filter(i => i.id !== id);
     data.updatedAt = Date.now();
