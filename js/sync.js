@@ -264,6 +264,7 @@ const Sync = {
   _mergeChecklist(local, remote) {
     if (!remote) return local;
     if (!local) return remote;
+    if (!local.items || local.items.length === 0) return remote;
     const lTime = local.updatedAt || 0;
     const rTime = remote.updatedAt || 0;
     return rTime > lTime ? remote : local;
@@ -471,7 +472,29 @@ const Sync = {
     return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   },
 
-  disconnect() {
+  // ====== 清除本地业务数据（保留 syncConfig） ======
+
+  async clearLocalData() {
+    Store.remove('todos');
+    Store.remove('checklist');
+    Store.remove('habits');
+    Store.remove('afterworkTodos');
+    Store.remove('settings');
+    Store.remove('fileTree');
+    Store.remove('fileRepo');
+    await Promise.all([
+      DB.clear('notes'),
+      DB.clear('meetings'),
+      DB.clear('files'),
+      DB.clear('localFolders'),
+      DB.clear('afterworkNotes'),
+    ]);
+  },
+
+  // ====== 退出登录（清除一切） ======
+
+  async disconnect() {
+    await this.clearLocalData();
     Store.remove('syncConfig');
   },
 };
