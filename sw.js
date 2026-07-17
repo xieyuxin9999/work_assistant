@@ -2,7 +2,7 @@
  * Service Worker — 离线缓存
  * 策略：网络优先（确保最新版本），离线回退缓存
  */
-const CACHE_NAME = 'dashboard-v10';
+const CACHE_NAME = 'dashboard-v11';
 const CACHE_URLS = [
   './',
   './index.html',
