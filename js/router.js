@@ -15,7 +15,11 @@ const Router = {
   },
 
   handle() {
-    let hash = window.location.hash.slice(1) || '/dashboard';
+    let hash = window.location.hash.slice(1);
+    // 未登录默认去设置页，已登录默认去仪表盘
+    if (!hash) {
+      hash = (typeof Sync !== 'undefined' && Sync.getStatus().configured) ? '/dashboard' : '/settings';
+    }
 
     // 处理 /more 路由 —— 仅移动端，打开更多菜单
     if (hash === '/more') {
