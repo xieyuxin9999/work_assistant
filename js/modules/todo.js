@@ -1,5 +1,5 @@
 /**
- * Todo Module — 待办事项
+ * Todo Module — 待办事项 + 日程
  */
 window.Modules = window.Modules || {};
 window.Modules.Todo = {
@@ -11,6 +11,8 @@ window.Modules.Todo = {
     const todos = allTodos.filter(t => !t.deleted);
     const filtered = this._filter(todos);
 
+    const schedules = Store.getSchedules().filter(s => !s.deleted);
+
     return `
       <div class="page-header">
         <div>
@@ -19,35 +21,56 @@ window.Modules.Todo = {
         </div>
       </div>
 
-      <div class="card mb-16">
-        <div class="flex gap-8 items-center">
-          <input type="text" class="form-input form-input-lg" id="todo-input"
-                 placeholder="添加待办...（Enter 确认）" maxlength="200">
-          <select class="form-select" id="todo-priority" style="width:auto">
-            <option value="low">低</option>
-            <option value="medium" selected>中</option>
-            <option value="high">高</option>
-          </select>
-          <input type="date" class="form-select" id="todo-date" style="width:auto">
-          <button class="btn btn-primary" id="todo-add-btn">添加</button>
-        </div>
-      </div>
+      <div class="todo-schedule-panel">
+        <!-- 左侧：待办列表 -->
+        <div class="todo-section">
+          <div class="card mb-16">
+            <div class="flex gap-8 items-center">
+              <input type="text" class="form-input form-input-lg" id="todo-input"
+                     placeholder="添加待办...（Enter 确认）" maxlength="200">
+              <select class="form-select" id="todo-priority" style="width:auto">
+                <option value="low">低</option>
+                <option value="medium" selected>中</option>
+                <option value="high">高</option>
+              </select>
+              <button class="btn btn-primary" id="todo-add-btn">添加</button>
+            </div>
+          </div>
 
-      <div class="flex items-center justify-between mb-16" style="flex-wrap:wrap;gap:12px">
-        <div class="filter-tabs" style="margin-bottom:0">
-          <span class="filter-tab ${this.filter==='all'?'active':''}" data-filter="all">全部 (${todos.length})</span>
-          <span class="filter-tab ${this.filter==='today'?'active':''}" data-filter="today">今日</span>
-          <span class="filter-tab ${this.filter==='pending'?'active':''}" data-filter="pending">未完成</span>
-          <span class="filter-tab ${this.filter==='completed'?'active':''}" data-filter="completed">已完成</span>
-          <span class="filter-tab ${this.filter==='overdue'?'active':''}" data-filter="overdue">逾期</span>
-        </div>
-        <div class="search-box" style="width:200px">
-          <input type="text" id="todo-search" placeholder="搜索..." value="${this.searchKeyword}">
-        </div>
-      </div>
+          <div class="flex items-center justify-between mb-16" style="flex-wrap:wrap;gap:12px">
+            <div class="filter-tabs" style="margin-bottom:0">
+              <span class="filter-tab ${this.filter==='all'?'active':''}" data-filter="all">全部 (${todos.length})</span>
+              <span class="filter-tab ${this.filter==='today'?'active':''}" data-filter="today">今日</span>
+              <span class="filter-tab ${this.filter==='pending'?'active':''}" data-filter="pending">未完成</span>
+              <span class="filter-tab ${this.filter==='completed'?'active':''}" data-filter="completed">已完成</span>
+              <span class="filter-tab ${this.filter==='overdue'?'active':''}" data-filter="overdue">逾期</span>
+            </div>
+            <div class="search-box" style="width:160px">
+              <input type="text" id="todo-search" placeholder="搜索..." value="${this.searchKeyword}">
+            </div>
+          </div>
 
-      <div id="todo-list">
-        ${this._renderList(filtered)}
+          <div id="todo-list">
+            ${this._renderList(filtered)}
+          </div>
+        </div>
+
+        <!-- 右侧：日程 -->
+        <div class="schedule-section">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📅 日程</div>
+            </div>
+            <div class="flex gap-8 mb-12" style="flex-wrap:wrap">
+              <input type="text" class="form-input" id="schedule-input" placeholder="添加日程..." maxlength="100" style="flex:1;min-width:120px">
+              <input type="date" class="form-select" id="schedule-date" style="width:auto">
+              <button class="btn btn-primary btn-sm" id="schedule-add">添加</button>
+            </div>
+            <div id="schedule-list">
+              ${this._renderScheduleList(schedules)}
+            </div>
+          </div>
+        </div>
       </div>
     `;
   },
@@ -72,6 +95,45 @@ window.Modules.Todo = {
         <button class="btn-icon" data-action="delete" data-id="${t.id}" title="删除">🗑️</button>
       </div>
     `).join('');
+  },
+
+  _renderScheduleList(schedules) {
+    const active = schedules.filter(s => !s.completed);
+    const done = schedules.filter(s => s.completed);
+
+    // 按日期排序（有日期的在前，无日期的在后）
+    active.sort((a, b) => {
+      if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+      if (a.dueDate) return -1;
+      if (b.dueDate) return 1;
+      return b.createdAt - a.createdAt;
+    });
+
+    if (active.length === 0 && done.length === 0) {
+      return '<div class="text-center text-muted py-16" style="font-size:13px">还没有日程</div>';
+    }
+
+    return `
+      ${active.map(s => this._renderScheduleItem(s)).join('')}
+      ${done.length > 0 ? `
+        <div class="divider"></div>
+        <div class="text-muted mb-8" style="font-size:12px">已完成 (${done.length})</div>
+        ${done.map(s => this._renderScheduleItem(s)).join('')}
+      ` : ''}
+    `;
+  },
+
+  _renderScheduleItem(s) {
+    const today = this._todayStr();
+    const isOverdue = s.dueDate && !s.completed && s.dueDate < today;
+    return `
+      <div class="list-item ${s.completed?'completed':''}" data-schedule-id="${s.id}">
+        <div class="checkbox ${s.completed?'checked':''}" data-action="toggle-schedule" data-id="${s.id}"></div>
+        <span class="flex-1" style="font-size:14px">${this._escape(s.title)}</span>
+        ${s.dueDate ? `<span class="tag ${isOverdue?'tag-danger':''}">${this._formatDate(s.dueDate)}</span>` : ''}
+        <button class="btn-icon" data-action="delete-schedule" data-id="${s.id}" title="删除">🗑️</button>
+      </div>
+    `;
   },
 
   _filter(todos) {
@@ -124,7 +186,6 @@ window.Modules.Todo = {
     const input = document.getElementById('todo-input');
     const addBtn = document.getElementById('todo-add-btn');
     const prioritySel = document.getElementById('todo-priority');
-    const dateInput = document.getElementById('todo-date');
 
     const addTodo = () => {
       const title = input.value.trim();
@@ -135,13 +196,12 @@ window.Modules.Todo = {
         title,
         completed: false,
         priority: prioritySel.value,
-        dueDate: dateInput.value || null,
+        dueDate: null,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
       Store.setTodos(todos);
       input.value = '';
-      dateInput.value = '';
       this._refresh();
       App.toast('已添加');
     };
@@ -177,6 +237,48 @@ window.Modules.Todo = {
       else if (action === 'delete') this._delete(id);
       else if (action === 'edit') this._edit(id);
     });
+
+    // 日程操作
+    const schedInput = document.getElementById('schedule-input');
+    const schedDate = document.getElementById('schedule-date');
+    const schedAdd = document.getElementById('schedule-add');
+
+    const addSchedule = () => {
+      const title = schedInput.value.trim();
+      if (!title) return;
+      const schedules = Store.getSchedules();
+      schedules.push({
+        id: Date.now().toString(),
+        title,
+        dueDate: schedDate.value || null,
+        completed: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      Store.setSchedules(schedules);
+      schedInput.value = '';
+      schedDate.value = '';
+      this._refresh();
+      App.toast('已添加');
+    };
+
+    if (schedAdd) schedAdd.addEventListener('click', addSchedule);
+    if (schedInput) schedInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') addSchedule();
+    });
+
+    // 日程列表操作
+    const schedList = document.getElementById('schedule-list');
+    if (schedList) {
+      schedList.addEventListener('click', e => {
+        const target = e.target.closest('[data-action]');
+        if (!target) return;
+        const action = target.dataset.action;
+        const id = target.dataset.id;
+        if (action === 'toggle-schedule') this._toggleSchedule(id);
+        else if (action === 'delete-schedule') this._deleteSchedule(id);
+      });
+    }
   },
 
   _toggle(id) {
@@ -187,6 +289,32 @@ window.Modules.Todo = {
       todo.updatedAt = Date.now();
       Store.setTodos(todos);
       this._refresh();
+    }
+  },
+
+  _toggleSchedule(id) {
+    const schedules = Store.getSchedules();
+    const s = schedules.find(i => i.id === id);
+    if (s) {
+      s.completed = !s.completed;
+      s.updatedAt = Date.now();
+      Store.setSchedules(schedules);
+      Sync.autoSync();
+      this._refresh();
+    }
+  },
+
+  _deleteSchedule(id) {
+    const schedules = Store.getSchedules();
+    const s = schedules.find(i => i.id === id);
+    if (s) {
+      s.deleted = true;
+      s.deletedAt = Date.now();
+      s.updatedAt = Date.now();
+      Store.setSchedules(schedules);
+      Sync.autoSync();
+      this._refresh();
+      App.toast('已删除');
     }
   },
 
