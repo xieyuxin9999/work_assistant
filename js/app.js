@@ -31,6 +31,7 @@ const App = {
 
     // 迁移旧配置（补全 username）+ 自动同步
     await Sync.migrateConfig();
+    this._updateNavVisibility();
     this._autoSync();
 
     // 注册 Service Worker
@@ -38,6 +39,13 @@ const App = {
   },
 
   async _loadModule(name) {
+    // 未登录时只允许访问设置页
+    if (name !== 'Settings' && !Sync.getStatus().configured) {
+      this.toast('请先登录');
+      Router.navigate('/settings');
+      return;
+    }
+
     const mod = window.Modules[name];
     if (!mod) return;
 
@@ -45,6 +53,13 @@ const App = {
     // 异步渲染（部分模块需要读取数据库）
     view.innerHTML = await mod.render();
     if (mod.init) await mod.init();
+  },
+
+  // ====== 导航可见性 ======
+
+  _updateNavVisibility() {
+    const loggedIn = Sync.getStatus().configured;
+    document.body.classList.toggle('not-logged-in', !loggedIn);
   },
 
   _bindGlobalEvents() {
