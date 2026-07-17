@@ -37,51 +37,38 @@ window.Modules.Habits = {
         <button class="btn btn-primary" id="habit-add">+ 添加习惯</button>
       </div>
 
-      <div class="grid grid-2">
-        ${habits.map(h => this._renderCard(h, today)).join('')}
+      <div class="card">
+        ${habits.map(h => this._renderListItem(h, today)).join('')}
       </div>
     `;
   },
 
-  _renderCard(habit, today) {
+  _renderListItem(habit, today) {
     const doneToday = habit.logs && habit.logs[today];
     const streak = this._calcStreak(habit.logs);
     const weekData = this._getWeekData(habit.logs);
 
     return `
-      <div class="card card-hover" data-habit-id="${habit.id}">
-        <div class="card-header">
-          <div class="card-title">
-            <span style="font-size:24px">${habit.icon||'⭐'}</span>
-            <span>${this._escape(habit.name)}</span>
-          </div>
-          <div class="flex gap-8">
-            <button class="btn-icon" data-action="edit" data-id="${habit.id}">✏️</button>
-            <button class="btn-icon" data-action="delete" data-id="${habit.id}">🗑️</button>
+      <div class="list-item habit-row" data-habit-id="${habit.id}" style="flex-wrap:wrap;padding:14px 16px">
+        <span style="font-size:20px;flex-shrink:0">${habit.icon||'⭐'}</span>
+        <div class="flex-1" style="min-width:80px">
+          <div style="font-weight:500;font-size:14px">${this._escape(habit.name)}</div>
+          <div class="text-muted" style="font-size:12px">
+            连续 <span style="color:${streak>0?'var(--success)':'var(--text-muted)'};font-weight:600">${streak}</span> 天
           </div>
         </div>
-
-        <div class="flex items-center justify-between mb-16">
-          <div>
-            <span class="text-secondary" style="font-size:13px">连续打卡</span>
-            <span style="font-size:28px;font-weight:700;margin-left:8px;color:${streak>0?'var(--success)':'var(--text-muted)'}">
-              ${streak}
-            </span>
-            <span class="text-muted" style="font-size:13px">天</span>
-          </div>
-          <button class="btn ${doneToday?'btn-secondary':'btn-primary'}" data-action="checkin" data-id="${habit.id}"
-                  ${doneToday?'disabled':''}>
-            ${doneToday?'✓ 今日已打卡':'打卡'}
-          </button>
-        </div>
-
-        <div class="text-secondary" style="font-size:12px;margin-bottom:6px">最近 7 天</div>
-        <div class="habit-grid">
+        <div class="habit-mini-week">
           ${weekData.map(d => `
-            <div class="habit-cell ${d.done?'done':''} ${d.today?'today':''}" title="${d.label}">
-              ${d.dayLabel}
-            </div>
+            <div class="habit-mini-cell ${d.done?'done':''} ${d.today?'today':''}" title="${d.label}">${d.dayLabel}</div>
           `).join('')}
+        </div>
+        <div class="flex gap-8" style="flex-shrink:0">
+          <button class="btn ${doneToday?'btn-secondary':'btn-primary'} btn-sm" data-action="checkin" data-id="${habit.id}"
+                  ${doneToday?'disabled':''}>
+            ${doneToday?'✓ 已打卡':'打卡'}
+          </button>
+          <button class="btn-icon" data-action="edit" data-id="${habit.id}" title="编辑">✏️</button>
+          <button class="btn-icon" data-action="delete" data-id="${habit.id}" title="删除">🗑️</button>
         </div>
       </div>
     `;
