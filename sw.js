@@ -2,7 +2,7 @@
  * Service Worker — 离线缓存
  * 策略：网络优先（确保最新版本），离线回退缓存
  */
-const CACHE_NAME = 'dashboard-v7';
+const CACHE_NAME = 'dashboard-v8';
 const CACHE_URLS = [
   './',
   './index.html',
@@ -28,6 +28,9 @@ const CACHE_URLS = [
   './js/modules/settings.js',
   './js/modules/trash.js',
   './lib/marked.min.js',
+  './lib/katex/katex.min.css',
+  './lib/katex/katex.min.js',
+  './lib/marked-katex-extension.umd.js',
   './manifest.json',
 ];
 

@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/responsive.css">
+  <link rel="stylesheet" href="lib/katex/katex.min.css">
 </head>
 <body>
   <div id="app">
@@ -110,6 +111,14 @@
   <div id="modal-container"></div>
 
   <script src="lib/marked.min.js"></script>
+  <script src="lib/katex/katex.min.js"></script>
+  <script src="lib/marked-katex-extension.umd.js"></script>
+  <script>
+    // 配置 marked 支持 KaTeX 数学公式
+    if (typeof marked !== 'undefined' && typeof markedKatex !== 'undefined') {
+      marked.use(markedKatex({ throwOnError: false }));
+    }
+  </script>
   <script src="js/store.js"></script>
   <script src="js/db.js"></script>
   <script src="js/crypto.js"></script>
