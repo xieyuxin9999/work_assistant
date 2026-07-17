@@ -181,6 +181,22 @@
   /* 天气温度 */
   .weather-temp { font-size: 28px; }
   .weather-icon { font-size: 40px; }
+
+  /* 下班生活面板变单列 */
+  .afterwork-panel {
+    grid-template-columns: 1fr;
+  }
+
+  /* 文件树在移动端不需要特殊处理，自动堆叠 */
+
+  /* 大纲编辑器移动端工具栏 */
+  .outline-mobile-toolbar {
+    display: flex;
+    align-items: center;
+  }
+  .outline-content.code {
+    font-size: 12px;
+  }
 }
 
 /* ========== 超小屏幕 ========== */

@@ -57,6 +57,30 @@ const Store = {
     this.set('habits', habits);
   },
 
+  // 下班生活待办
+  getAfterworkTodos() {
+    return this.get('afterworkTodos', []);
+  },
+  setAfterworkTodos(todos) {
+    this.set('afterworkTodos', todos);
+  },
+
+  // 文件树（电脑端扫描，随 Gist 同步给手机端只读查看）
+  getFileTree() {
+    return this.get('fileTree', { tree: null, scannedAt: null, folderName: null });
+  },
+  setFileTree(data) {
+    this.set('fileTree', data);
+  },
+
+  // 文件同步仓库名（每个用户自动创建的私有仓库）
+  getFileRepo() {
+    return this.get('fileRepo', null);
+  },
+  setFileRepo(repo) {
+    this.set('fileRepo', repo);
+  },
+
   // 设置
   getSettings() {
     return this.get('settings', {

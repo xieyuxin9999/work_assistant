@@ -85,6 +85,19 @@ window.Modules.Trash = {
       });
     });
 
+    // 文件
+    const files = await DB.getAll('files');
+    files.filter(f => f.deleted).forEach(f => {
+      items.push({
+        type: 'file',
+        typeLabel: '文件',
+        typeIcon: '📁',
+        id: f.id,
+        title: f.name || '无标题',
+        deletedAt: f.deletedAt || f.updatedAt || 0,
+      });
+    });
+
     // 按删除时间倒序
     items.sort((a, b) => b.deletedAt - a.deletedAt);
     return items;
@@ -154,6 +167,18 @@ window.Modules.Trash = {
       });
       App.toast('已恢复');
       return;
+    } else if (type === 'file') {
+      DB.get('files', id).then(item => {
+        if (item) {
+          delete item.deleted;
+          delete item.deletedAt;
+          item.updatedAt = Date.now();
+          DB.put('files', item);
+          this._reload();
+        }
+      });
+      App.toast('已恢复');
+      return;
     }
     App.toast('已恢复');
     this._reload();
@@ -170,6 +195,8 @@ window.Modules.Trash = {
     } else if (type === 'note' || type === 'meeting') {
       const store = type === 'note' ? 'notes' : 'meetings';
       DB.delete(store, id);
+    } else if (type === 'file') {
+      DB.delete('files', id);
     }
     App.toast('已永久删除');
     this._reload();
@@ -193,6 +220,10 @@ window.Modules.Trash = {
       const meetings = await DB.getAll('meetings');
       for (const m of meetings) {
         if (m.deleted) await DB.delete('meetings', m.id);
+      }
+      const files = await DB.getAll('files');
+      for (const f of files) {
+        if (f.deleted) await DB.delete('files', f.id);
       }
       App.toast('垃圾箱已清空');
       this._reload();

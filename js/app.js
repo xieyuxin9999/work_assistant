@@ -13,13 +13,13 @@ const App = {
 
     // 注册路由
     Router.register('/dashboard', () => this._loadModule('Dashboard'));
+    Router.register('/morning', () => this._loadModule('Morning'));
     Router.register('/todo', () => this._loadModule('Todo'));
     Router.register('/notes', () => this._loadModule('Notes'));
     Router.register('/meetings', () => this._loadModule('Meetings'));
     Router.register('/files', () => this._loadModule('Files'));
     Router.register('/habits', () => this._loadModule('Habits'));
-    Router.register('/checklist', () => this._loadModule('Checklist'));
-    Router.register('/weather', () => this._loadModule('Weather'));
+    Router.register('/afterwork', () => this._loadModule('Afterwork'));
     Router.register('/settings', () => this._loadModule('Settings'));
     Router.register('/trash', () => this._loadModule('Trash'));
 

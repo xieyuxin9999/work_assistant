@@ -5,13 +5,15 @@
 const DB = {
   _db: null,
   _dbName: 'personal-dashboard',
-  _version: 1,
+  _version: 2,
 
   // 数据库配置
   _stores: {
     notes: { keyPath: 'id' },
     meetings: { keyPath: 'id' },
     files: { keyPath: 'id' },
+    localFolders: { keyPath: 'id' },
+    afterworkNotes: { keyPath: 'id' },
   },
 
   async open() {

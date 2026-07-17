@@ -219,10 +219,14 @@ const Sync = {
       checklist: Store.getChecklist(),
       habits: Store.getHabits(),
       settings: syncSettings,
+      afterworkTodos: Store.getAfterworkTodos(),
+      fileTree: Store.getFileTree(),
+      fileRepo: Store.getFileRepo(),
     };
 
     const notes = await DB.getAll('notes');
     const meetings = await DB.getAll('meetings');
+    const afterworkNotes = await DB.getAll('afterworkNotes');
 
     return {
       version: 2,
@@ -230,7 +234,7 @@ const Sync = {
       deviceId: config.deviceId,
       syncToken: config.token,
       localData,
-      idbData: { notes, meetings },
+      idbData: { notes, meetings, afterworkNotes },
     };
   },
 
@@ -274,6 +278,19 @@ const Sync = {
     return merged;
   },
 
+  _mergeFileTree(local, remote) {
+    if (!remote) return local;
+    if (!local) return remote;
+    const lTime = local.scannedAt || 0;
+    const rTime = remote.scannedAt || 0;
+    return rTime > lTime ? remote : local;
+  },
+
+  _mergeFileRepo(local, remote) {
+    // 仓库名一旦设定就不变，优先取有值的
+    return local || remote || null;
+  },
+
   async mergeData(remoteData) {
     const localData = await this.collectSyncData();
 
@@ -290,17 +307,25 @@ const Sync = {
     const mergedHabits = this._mergeArrays(localData.localData.habits, remoteData?.localData?.habits);
     const mergedChecklist = this._mergeChecklist(localData.localData.checklist, remoteData?.localData?.checklist);
     const mergedSettings = this._mergeSettings(localData.localData.settings, remoteData?.localData?.settings);
+    const mergedAfterworkTodos = this._mergeArrays(localData.localData.afterworkTodos, remoteData?.localData?.afterworkTodos);
+    const mergedFileTree = this._mergeFileTree(localData.localData.fileTree, remoteData?.localData?.fileTree);
+    const mergedFileRepo = this._mergeFileRepo(localData.localData.fileRepo, remoteData?.localData?.fileRepo);
 
     const mergedNotes = this._mergeArrays(localData.idbData.notes, remoteData?.idbData?.notes);
     const mergedMeetings = this._mergeArrays(localData.idbData.meetings, remoteData?.idbData?.meetings);
+    const mergedAfterworkNotes = this._mergeArrays(localData.idbData.afterworkNotes, remoteData?.idbData?.afterworkNotes);
 
     Store.setTodos(mergedTodos);
     Store.setHabits(mergedHabits);
     Store.setChecklist(mergedChecklist);
     Store.setSettings(mergedSettings);
+    Store.setAfterworkTodos(mergedAfterworkTodos);
+    Store.setFileTree(mergedFileTree);
+    Store.setFileRepo(mergedFileRepo);
 
     await DB.importStore('notes', mergedNotes);
     await DB.importStore('meetings', mergedMeetings);
+    await DB.importStore('afterworkNotes', mergedAfterworkNotes);
 
     return {
       version: 2,
@@ -312,8 +337,11 @@ const Sync = {
         checklist: mergedChecklist,
         habits: mergedHabits,
         settings: mergedSettings,
+        afterworkTodos: mergedAfterworkTodos,
+        fileTree: mergedFileTree,
+        fileRepo: mergedFileRepo,
       },
-      idbData: { notes: mergedNotes, meetings: mergedMeetings },
+      idbData: { notes: mergedNotes, meetings: mergedMeetings, afterworkNotes: mergedAfterworkNotes },
     };
   },
 

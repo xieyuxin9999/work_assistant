@@ -2,7 +2,7 @@
  * Service Worker — 离线缓存
  * 策略：网络优先（确保最新版本），离线回退缓存
  */
-const CACHE_NAME = 'dashboard-v6';
+const CACHE_NAME = 'dashboard-v7';
 const CACHE_URLS = [
   './',
   './index.html',
@@ -18,6 +18,8 @@ const CACHE_URLS = [
   './js/modules/dashboard.js',
   './js/modules/weather.js',
   './js/modules/checklist.js',
+  './js/modules/morning.js',
+  './js/modules/afterwork.js',
   './js/modules/todo.js',
   './js/modules/notes.js',
   './js/modules/meetings.js',

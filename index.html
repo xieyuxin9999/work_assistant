@@ -24,6 +24,9 @@
         <a href="#/dashboard" class="nav-item" data-route="dashboard">
           <span class="nav-icon">🏠</span><span class="nav-label">仪表盘</span>
         </a>
+        <a href="#/morning" class="nav-item" data-route="morning">
+          <span class="nav-icon">🌞</span><span class="nav-label">上班准备</span>
+        </a>
         <a href="#/todo" class="nav-item" data-route="todo">
           <span class="nav-icon">✅</span><span class="nav-label">待办事项</span>
         </a>
@@ -36,14 +39,11 @@
         <a href="#/files" class="nav-item" data-route="files">
           <span class="nav-icon">📁</span><span class="nav-label">文件管理</span>
         </a>
+        <a href="#/afterwork" class="nav-item" data-route="afterwork">
+          <span class="nav-icon">🌙</span><span class="nav-label">下班生活</span>
+        </a>
         <a href="#/habits" class="nav-item" data-route="habits">
           <span class="nav-icon">💪</span><span class="nav-label">健康打卡</span>
-        </a>
-        <a href="#/checklist" class="nav-item" data-route="checklist">
-          <span class="nav-icon">🎒</span><span class="nav-label">上班物品</span>
-        </a>
-        <a href="#/weather" class="nav-item" data-route="weather">
-          <span class="nav-icon">🌤️</span><span class="nav-label">天气预报</span>
         </a>
         <a href="#/trash" class="nav-item" data-route="trash">
           <span class="nav-icon">🗑️</span><span class="nav-label">垃圾箱</span>
@@ -70,14 +70,14 @@
     <a href="#/dashboard" class="nav-item" data-route="dashboard">
       <span class="nav-icon">🏠</span><span class="nav-label">首页</span>
     </a>
+    <a href="#/morning" class="nav-item" data-route="morning">
+      <span class="nav-icon">🌞</span><span class="nav-label">上班</span>
+    </a>
     <a href="#/todo" class="nav-item" data-route="todo">
       <span class="nav-icon">✅</span><span class="nav-label">待办</span>
     </a>
-    <a href="#/notes" class="nav-item" data-route="notes">
-      <span class="nav-icon">📝</span><span class="nav-label">笔记</span>
-    </a>
-    <a href="#/habits" class="nav-item" data-route="habits">
-      <span class="nav-icon">💪</span><span class="nav-label">打卡</span>
+    <a href="#/afterwork" class="nav-item" data-route="afterwork">
+      <span class="nav-icon">🌙</span><span class="nav-label">下班</span>
     </a>
     <a href="#/more" class="nav-item" data-route="more">
       <span class="nav-icon">⋯</span><span class="nav-label">更多</span>
@@ -91,9 +91,10 @@
         <span>更多功能</span>
         <button class="btn-icon" id="more-close">✕</button>
       </div>
+      <a href="#/notes" class="more-item"><span>📝</span> 工作笔记</a>
       <a href="#/meetings" class="more-item"><span>👥</span> 会议记录</a>
-      <a href="#/checklist" class="more-item"><span>🎒</span> 上班物品</a>
-      <a href="#/weather" class="more-item"><span>🌤️</span> 天气预报</a>
+      <a href="#/files" class="more-item"><span>📁</span> 文件管理</a>
+      <a href="#/habits" class="more-item"><span>💪</span> 健康打卡</a>
       <a href="#/trash" class="more-item"><span>🗑️</span> 垃圾箱</a>
       <a href="#/settings" class="more-item"><span>⚙️</span> 设置</a>
       <hr>
@@ -117,11 +118,13 @@
   <script src="js/modules/dashboard.js"></script>
   <script src="js/modules/weather.js"></script>
   <script src="js/modules/checklist.js"></script>
+  <script src="js/modules/morning.js"></script>
   <script src="js/modules/todo.js"></script>
   <script src="js/modules/notes.js"></script>
   <script src="js/modules/meetings.js"></script>
   <script src="js/modules/files.js"></script>
   <script src="js/modules/habits.js"></script>
+  <script src="js/modules/afterwork.js"></script>
   <script src="js/modules/settings.js"></script>
   <script src="js/modules/trash.js"></script>
   <script src="js/app.js"></script>

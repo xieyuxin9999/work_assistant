@@ -50,7 +50,7 @@ window.Modules.Dashboard = {
     return `
       <div class="page-header">
         <div>
-          <div class="page-title">${greeting}，雨欣</div>
+          <div class="page-title">${greeting}，${this._getUsername()}</div>
           <div class="page-subtitle">${dateStr}</div>
         </div>
       </div>
@@ -62,7 +62,7 @@ window.Modules.Dashboard = {
           ${weatherHtml}
         </div>
 
-        <div class="card card-hover" onclick="Router.navigate('/checklist')" style="cursor:pointer">
+        <div class="card card-hover" onclick="Router.navigate('/morning')" style="cursor:pointer">
           <div class="text-secondary mb-8" style="font-size:13px">🎒 上班物品</div>
           <div class="flex items-center gap-12">
             <span style="font-size:36px">${checklistDone === checklistItems.length && checklistItems.length > 0 ? '✅' : '🎒'}</span>
@@ -208,6 +208,11 @@ window.Modules.Dashboard = {
     if (h < 18) return '下午好';
     if (h < 22) return '晚上好';
     return '夜深了';
+  },
+
+  _getUsername() {
+    const config = Sync.getConfig();
+    return config.username || '用户';
   },
 
   _escape(s) {

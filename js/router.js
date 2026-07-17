@@ -31,12 +31,6 @@ const Router = {
       App.toggleMoreMenu(false);
     }
 
-    // 移动端守卫：文件管理仅桌面端可用
-    if (hash === '/files' && window.innerWidth <= 768) {
-      this.navigate('/dashboard');
-      return;
-    }
-
     // 查找匹配的路由
     const handler = this.routes[hash];
 
