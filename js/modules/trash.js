@@ -35,7 +35,7 @@ window.Modules.Trash = {
 
     // 待办事项
     const todos = Store.getTodos();
-    todos.filter(t => t.deleted).forEach(t => {
+    todos.filter(t => t.deleted && !t.purged).forEach(t => {
       items.push({
         type: 'todo',
         typeLabel: '待办',
@@ -46,9 +46,22 @@ window.Modules.Trash = {
       });
     });
 
+    // 日程
+    const schedules = Store.getSchedules();
+    schedules.filter(s => s.deleted && !s.purged).forEach(s => {
+      items.push({
+        type: 'schedule',
+        typeLabel: '日程',
+        typeIcon: '📅',
+        id: s.id,
+        title: s.title,
+        deletedAt: s.deletedAt || s.updatedAt || 0,
+      });
+    });
+
     // 习惯
     const habits = Store.getHabits();
-    habits.filter(h => h.deleted).forEach(h => {
+    habits.filter(h => h.deleted && !h.purged).forEach(h => {
       items.push({
         type: 'habit',
         typeLabel: '习惯',
@@ -59,9 +72,22 @@ window.Modules.Trash = {
       });
     });
 
+    // 下班生活待办
+    const afterworkTodos = Store.getAfterworkTodos();
+    afterworkTodos.filter(t => t.deleted && !t.purged).forEach(t => {
+      items.push({
+        type: 'afterworkTodo',
+        typeLabel: '生活待办',
+        typeIcon: '🏠',
+        id: t.id,
+        title: t.title,
+        deletedAt: t.deletedAt || t.updatedAt || 0,
+      });
+    });
+
     // 笔记
     const notes = await DB.getAll('notes');
-    notes.filter(n => n.deleted).forEach(n => {
+    notes.filter(n => n.deleted && !n.purged).forEach(n => {
       items.push({
         type: 'note',
         typeLabel: '笔记',
@@ -74,7 +100,7 @@ window.Modules.Trash = {
 
     // 会议记录
     const meetings = await DB.getAll('meetings');
-    meetings.filter(m => m.deleted).forEach(m => {
+    meetings.filter(m => m.deleted && !m.purged).forEach(m => {
       items.push({
         type: 'meeting',
         typeLabel: '会议',
@@ -85,9 +111,22 @@ window.Modules.Trash = {
       });
     });
 
+    // 下班生活笔记
+    const afterworkNotes = await DB.getAll('afterworkNotes');
+    afterworkNotes.filter(n => n.deleted && !n.purged).forEach(n => {
+      items.push({
+        type: 'afterworkNote',
+        typeLabel: '生活笔记',
+        typeIcon: '📖',
+        id: n.id,
+        title: n.title || '无标题',
+        deletedAt: n.deletedAt || n.updatedAt || 0,
+      });
+    });
+
     // 文件
     const files = await DB.getAll('files');
-    files.filter(f => f.deleted).forEach(f => {
+    files.filter(f => f.deleted && !f.purged).forEach(f => {
       items.push({
         type: 'file',
         typeLabel: '文件',
@@ -154,6 +193,24 @@ window.Modules.Trash = {
         item.updatedAt = Date.now();
         Store.set(key, items);
       }
+    } else if (type === 'schedule') {
+      const items = Store.getSchedules();
+      const item = items.find(i => i.id === id);
+      if (item) {
+        delete item.deleted;
+        delete item.deletedAt;
+        item.updatedAt = Date.now();
+        Store.setSchedules(items);
+      }
+    } else if (type === 'afterworkTodo') {
+      const items = Store.getAfterworkTodos();
+      const item = items.find(i => i.id === id);
+      if (item) {
+        delete item.deleted;
+        delete item.deletedAt;
+        item.updatedAt = Date.now();
+        Store.setAfterworkTodos(items);
+      }
     } else if (type === 'note' || type === 'meeting') {
       const store = type === 'note' ? 'notes' : 'meetings';
       DB.get(store, id).then(item => {
@@ -167,19 +224,71 @@ window.Modules.Trash = {
       });
       App.toast('已恢复');
       return;
-    } else if (type === 'file') {
-      DB.get('files', id).then(item => {
+    } else if (type === 'afterworkNote') {
+      DB.get('afterworkNotes', id).then(item => {
         if (item) {
           delete item.deleted;
           delete item.deletedAt;
           item.updatedAt = Date.now();
-          DB.put('files', item);
+          DB.put('afterworkNotes', item);
           this._reload();
         }
       });
       App.toast('已恢复');
       return;
+    } else if (type === 'file') {
+      DB.get('files', id).then(async (item) => {
+        if (!item) { this._reload(); return; }
+
+        // 同步文件恢复：重新上传到 GitHub
+        if (item.fromSync && item.content) {
+          const config = Sync.getConfig();
+          const fileRepo = Store.getFileRepo();
+          if (config.token && fileRepo) {
+            try {
+              // 检查文件是否已存在（获取 sha）
+              let sha = null;
+              const checkResp = await fetch(
+                `https://api.github.com/repos/${config.username}/${fileRepo}/contents/${encodeURIComponent(item.name)}`,
+                { headers: { 'Authorization': `token ${config.token}`, 'Accept': 'application/vnd.github.v3+json' } }
+              );
+              if (checkResp.ok) {
+                const checkData = await checkResp.json();
+                sha = checkData.sha;
+              }
+
+              const uploadResp = await fetch(
+                `https://api.github.com/repos/${config.username}/${fileRepo}/contents/${encodeURIComponent(item.name)}`,
+                {
+                  method: 'PUT',
+                  headers: { 'Authorization': `token ${config.token}`, 'Accept': 'application/vnd.github.v3+json' },
+                  body: JSON.stringify({ message: `restore ${item.name}`, content: item.content, ...(sha ? { sha } : {}) }),
+                }
+              );
+
+              if (uploadResp.ok) {
+                await DB.delete('files', id);
+                App.toast('已恢复到同步仓库');
+                this._reload();
+                return;
+              }
+            } catch (e) {
+              App.toast('恢复到仓库失败: ' + e.message);
+            }
+          }
+        }
+
+        // 普通文件恢复
+        delete item.deleted;
+        delete item.deletedAt;
+        item.updatedAt = Date.now();
+        DB.put('files', item);
+        App.toast('已恢复');
+        this._reload();
+      });
+      return;
     }
+    Sync.autoSync();
     App.toast('已恢复');
     this._reload();
   },
@@ -187,17 +296,72 @@ window.Modules.Trash = {
   _purge(type, id) {
     if (!confirm('永久删除后无法恢复，确定吗？')) return;
 
+    const now = Date.now();
+
     if (type === 'todo' || type === 'habit') {
       const key = type === 'todo' ? 'todos' : 'habits';
-      let items = Store.get(key);
-      items = items.filter(i => i.id !== id);
-      Store.set(key, items);
+      const items = Store.get(key);
+      const item = items.find(i => i.id === id);
+      if (item) {
+        item.purged = true;
+        item.updatedAt = now;
+        Store.set(key, items);
+      }
+    } else if (type === 'schedule') {
+      const items = Store.getSchedules();
+      const item = items.find(i => i.id === id);
+      if (item) {
+        item.purged = true;
+        item.updatedAt = now;
+        Store.setSchedules(items);
+      }
+    } else if (type === 'afterworkTodo') {
+      const items = Store.getAfterworkTodos();
+      const item = items.find(i => i.id === id);
+      if (item) {
+        item.purged = true;
+        item.updatedAt = now;
+        Store.setAfterworkTodos(items);
+      }
     } else if (type === 'note' || type === 'meeting') {
       const store = type === 'note' ? 'notes' : 'meetings';
-      DB.delete(store, id);
+      DB.get(store, id).then(item => {
+        if (item) {
+          item.purged = true;
+          item.updatedAt = now;
+          DB.put(store, item);
+        }
+        Sync.autoSync();
+        this._reload();
+      });
+      App.toast('已永久删除');
+      return;
+    } else if (type === 'afterworkNote') {
+      DB.get('afterworkNotes', id).then(item => {
+        if (item) {
+          item.purged = true;
+          item.updatedAt = now;
+          DB.put('afterworkNotes', item);
+        }
+        Sync.autoSync();
+        this._reload();
+      });
+      App.toast('已永久删除');
+      return;
     } else if (type === 'file') {
-      DB.delete('files', id);
+      DB.get('files', id).then(item => {
+        if (item) {
+          item.purged = true;
+          item.updatedAt = now;
+          DB.put('files', item);
+        }
+        Sync.autoSync();
+        this._reload();
+      });
+      App.toast('已永久删除');
+      return;
     }
+    Sync.autoSync();
     App.toast('已永久删除');
     this._reload();
   },
@@ -205,26 +369,44 @@ window.Modules.Trash = {
   _emptyAll() {
     if (!confirm('清空垃圾箱将永久删除所有已删除项，确定吗？')) return;
 
-    // 待办和习惯
-    const todos = Store.getTodos().filter(t => !t.deleted);
+    const now = Date.now();
+
+    // localStorage 项：标记 purged
+    const todos = Store.getTodos();
+    todos.forEach(t => { if (t.deleted && !t.purged) { t.purged = true; t.updatedAt = now; } });
     Store.setTodos(todos);
-    const habits = Store.getHabits().filter(h => !h.deleted);
+
+    const habits = Store.getHabits();
+    habits.forEach(h => { if (h.deleted && !h.purged) { h.purged = true; h.updatedAt = now; } });
     Store.setHabits(habits);
 
-    // 笔记和会议
+    const schedules = Store.getSchedules();
+    schedules.forEach(s => { if (s.deleted && !s.purged) { s.purged = true; s.updatedAt = now; } });
+    Store.setSchedules(schedules);
+
+    const afterworkTodos = Store.getAfterworkTodos();
+    afterworkTodos.forEach(t => { if (t.deleted && !t.purged) { t.purged = true; t.updatedAt = now; } });
+    Store.setAfterworkTodos(afterworkTodos);
+
+    // IDB 项：标记 purged
     (async () => {
       const notes = await DB.getAll('notes');
       for (const n of notes) {
-        if (n.deleted) await DB.delete('notes', n.id);
+        if (n.deleted && !n.purged) { n.purged = true; n.updatedAt = now; await DB.put('notes', n); }
       }
       const meetings = await DB.getAll('meetings');
       for (const m of meetings) {
-        if (m.deleted) await DB.delete('meetings', m.id);
+        if (m.deleted && !m.purged) { m.purged = true; m.updatedAt = now; await DB.put('meetings', m); }
+      }
+      const afterworkNotes = await DB.getAll('afterworkNotes');
+      for (const n of afterworkNotes) {
+        if (n.deleted && !n.purged) { n.purged = true; n.updatedAt = now; await DB.put('afterworkNotes', n); }
       }
       const files = await DB.getAll('files');
       for (const f of files) {
-        if (f.deleted) await DB.delete('files', f.id);
+        if (f.deleted && !f.purged) { f.purged = true; f.updatedAt = now; await DB.put('files', f); }
       }
+      await Sync.autoSync();
       App.toast('垃圾箱已清空');
       this._reload();
     })();
