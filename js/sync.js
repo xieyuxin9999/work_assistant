@@ -222,6 +222,8 @@ const Sync = {
       afterworkTodos: Store.getAfterworkTodos(),
       fileTree: Store.getFileTree(),
       fileRepo: Store.getFileRepo(),
+      dashboardInfo: Store.getDashboardInfo(),
+      schedules: Store.getSchedules(),
     };
 
     const notes = await DB.getAll('notes');
@@ -292,6 +294,11 @@ const Sync = {
     return local || remote || null;
   },
 
+  _mergeString(local, remote) {
+    // 简单字符串：非空优先，本地优先
+    return local || remote || '';
+  },
+
   async mergeData(remoteData) {
     const localData = await this.collectSyncData();
 
@@ -311,6 +318,8 @@ const Sync = {
     const mergedAfterworkTodos = this._mergeArrays(localData.localData.afterworkTodos, remoteData?.localData?.afterworkTodos);
     const mergedFileTree = this._mergeFileTree(localData.localData.fileTree, remoteData?.localData?.fileTree);
     const mergedFileRepo = this._mergeFileRepo(localData.localData.fileRepo, remoteData?.localData?.fileRepo);
+    const mergedDashboardInfo = this._mergeString(localData.localData.dashboardInfo, remoteData?.localData?.dashboardInfo);
+    const mergedSchedules = this._mergeArrays(localData.localData.schedules, remoteData?.localData?.schedules);
 
     const mergedNotes = this._mergeArrays(localData.idbData.notes, remoteData?.idbData?.notes);
     const mergedMeetings = this._mergeArrays(localData.idbData.meetings, remoteData?.idbData?.meetings);
@@ -323,6 +332,8 @@ const Sync = {
     Store.setAfterworkTodos(mergedAfterworkTodos);
     Store.setFileTree(mergedFileTree);
     Store.setFileRepo(mergedFileRepo);
+    Store.setDashboardInfo(mergedDashboardInfo);
+    Store.setSchedules(mergedSchedules);
 
     await DB.importStore('notes', mergedNotes);
     await DB.importStore('meetings', mergedMeetings);
@@ -341,6 +352,8 @@ const Sync = {
         afterworkTodos: mergedAfterworkTodos,
         fileTree: mergedFileTree,
         fileRepo: mergedFileRepo,
+        dashboardInfo: mergedDashboardInfo,
+        schedules: mergedSchedules,
       },
       idbData: { notes: mergedNotes, meetings: mergedMeetings, afterworkNotes: mergedAfterworkNotes },
     };
@@ -482,6 +495,8 @@ const Sync = {
     Store.remove('settings');
     Store.remove('fileTree');
     Store.remove('fileRepo');
+    Store.remove('dashboardInfo');
+    Store.remove('schedules');
     await Promise.all([
       DB.clear('notes'),
       DB.clear('meetings'),
