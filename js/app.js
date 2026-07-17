@@ -285,8 +285,41 @@ const App = {
 
   _registerSW() {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(err => {
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        // 主动检查更新（绕过 CDN/浏览器对 sw.js 的延迟）
+        if (reg) reg.update().catch(() => {});
+
+        // 监听等待中的新 SW：一旦下载完成立即激活
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          }
+        });
+      }).catch(err => {
         console.log('SW registration failed:', err);
+      });
+
+      // 监听 SW 的 skipWaiting 消息
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data && e.data.type === 'SKIP_WAITING') {
+          navigator.serviceWorker.getRegistration().then(reg => {
+            if (reg && reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          });
+        }
+      });
+
+      // 新版本 Service Worker 激活后自动刷新页面（确保用户拿到最新代码）
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        App.toast('发现新版本，正在刷新…');
+        window.location.reload();
       });
     }
   },
