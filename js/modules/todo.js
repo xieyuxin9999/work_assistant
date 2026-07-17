@@ -25,14 +25,15 @@ window.Modules.Todo = {
         <!-- 左侧：待办列表 -->
         <div class="todo-section">
           <div class="card mb-16">
-            <div class="flex gap-8 items-center">
+            <div class="flex gap-8 items-center" style="flex-wrap:wrap">
               <input type="text" class="form-input form-input-lg" id="todo-input"
-                     placeholder="添加待办...（Enter 确认）" maxlength="200">
+                     placeholder="添加待办...（Enter 确认）" maxlength="200" style="flex:1;min-width:160px">
               <select class="form-select" id="todo-priority" style="width:auto">
                 <option value="low">低</option>
                 <option value="medium" selected>中</option>
                 <option value="high">高</option>
               </select>
+              <input type="date" class="form-select" id="todo-date" style="width:auto" title="截止日期">
               <button class="btn btn-primary" id="todo-add-btn">添加</button>
             </div>
           </div>
@@ -186,6 +187,7 @@ window.Modules.Todo = {
     const input = document.getElementById('todo-input');
     const addBtn = document.getElementById('todo-add-btn');
     const prioritySel = document.getElementById('todo-priority');
+    const dateInput = document.getElementById('todo-date');
 
     const addTodo = () => {
       const title = input.value.trim();
@@ -196,12 +198,14 @@ window.Modules.Todo = {
         title,
         completed: false,
         priority: prioritySel.value,
-        dueDate: null,
+        dueDate: dateInput.value || null,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
       Store.setTodos(todos);
+      Sync.autoSync();
       input.value = '';
+      dateInput.value = '';
       this._refresh();
       App.toast('已添加');
     };
