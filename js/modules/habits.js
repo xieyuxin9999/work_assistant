@@ -63,9 +63,8 @@ window.Modules.Habits = {
           `).join('')}
         </div>
         <div class="flex gap-8" style="flex-shrink:0">
-          <button class="btn ${doneToday?'btn-secondary':'btn-primary'} btn-sm" data-action="checkin" data-id="${habit.id}"
-                  ${doneToday?'disabled':''}>
-            ${doneToday?'✓ 已打卡':'打卡'}
+          <button class="btn ${doneToday?'btn-secondary':'btn-primary'} btn-sm" data-action="checkin" data-id="${habit.id}">
+            ${doneToday?'✓ 取消打卡':'打卡'}
           </button>
           <button class="btn-icon" data-action="edit" data-id="${habit.id}" title="编辑">✏️</button>
           <button class="btn-icon" data-action="delete" data-id="${habit.id}" title="删除">🗑️</button>
@@ -136,12 +135,23 @@ window.Modules.Habits = {
     if (!habit) return;
     if (!habit.logs) habit.logs = {};
     const today = this._todayStr();
-    if (habit.logs[today]) return;
-    habit.logs[today] = true;
-    habit.updatedAt = Date.now();
-    Store.setHabits(habits);
-    this._refresh();
-    App.toast('打卡成功！💪');
+    if (habit.logs[today]) {
+      // 取消打卡
+      delete habit.logs[today];
+      habit.updatedAt = Date.now();
+      Store.setHabits(habits);
+      Sync.autoSync();
+      this._refresh();
+      App.toast('已取消打卡');
+    } else {
+      // 打卡
+      habit.logs[today] = true;
+      habit.updatedAt = Date.now();
+      Store.setHabits(habits);
+      Sync.autoSync();
+      this._refresh();
+      App.toast('打卡成功！💪');
+    }
   },
 
   _showAddEdit(id) {
