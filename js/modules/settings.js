@@ -85,8 +85,8 @@ window.Modules.Settings = {
               <input type="password" class="form-input" id="register-token" placeholder="ghp_xxxxxxxx"
                      style="font-family:'SF Mono',Monaco,monospace;font-size:13px">
               <div class="text-muted mt-4" style="font-size:12px">
-               仅需 <code>gist</code> 权限 ·
-                <a href="https://github.com/settings/tokens/new?scopes=gist&description=work-assistant" target="_blank" style="color:var(--primary)">点击创建 Token →</a>
+               需要 <code>gist</code> + <code>repo</code> 权限 ·
+                <a href="https://github.com/settings/tokens/new?scopes=gist,repo&description=work-assistant" target="_blank" style="color:var(--primary)">点击创建 Token →</a>
               </div>
             </div>
             <div class="form-group">
