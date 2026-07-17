@@ -119,7 +119,7 @@ window.Modules.Dashboard = {
       </div>
 
       <!-- 快捷操作 -->
-      <div class="grid grid-4">
+      <div class="grid grid-4 mb-24">
         <button class="card card-hover text-center" onclick="Router.navigate('/todo')">
           <div style="font-size:28px">✅</div>
           <div class="mt-8" style="font-size:14px;font-weight:500">新建待办</div>
@@ -136,6 +136,17 @@ window.Modules.Dashboard = {
           <div style="font-size:28px">⚙️</div>
           <div class="mt-8" style="font-size:14px;font-weight:500">设置同步</div>
         </button>
+      </div>
+
+      <!-- 信息栏 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📌 常用信息</div>
+          <button class="btn-text" id="dashboard-info-edit">编辑</button>
+        </div>
+        <div id="dashboard-info-display">
+          ${this._renderInfoDisplay()}
+        </div>
       </div>
     `;
   },
@@ -180,6 +191,40 @@ window.Modules.Dashboard = {
           if (todo.completed) App.toast('已完成 ✅');
         }
       });
+    });
+
+    // 信息栏编辑
+    const infoEditBtn = document.getElementById('dashboard-info-edit');
+    if (infoEditBtn) infoEditBtn.addEventListener('click', () => this._editInfo());
+  },
+
+  _renderInfoDisplay() {
+    const info = Store.getDashboardInfo();
+    if (!info || !info.trim()) {
+      return '<div class="text-muted" style="font-size:13px">点击「编辑」添加常用网址、账号等信息</div>';
+    }
+    // 支持 Markdown 渲染
+    return `<div class="md-preview" style="font-size:14px;line-height:1.8">${marked.parse(info)}</div>`;
+  },
+
+  _editInfo() {
+    const current = Store.getDashboardInfo();
+    App.openModal({
+      title: '编辑常用信息',
+      body: `
+        <div class="text-muted mb-8" style="font-size:12px">支持 Markdown 语法，可记录网址、账号、常用链接等</div>
+        <textarea class="form-textarea" id="dashboard-info-input" style="min-height:300px;font-family:'SF Mono',Monaco,monospace;font-size:13px;line-height:1.6" placeholder="例如：&#10;## 常用网址&#10;- [GitHub](https://github.com)&#10;- [Google](https://google.com)&#10;&#10;## 账号&#10;- 邮箱: xxx@example.com">${this._escape(current)}</textarea>
+      `,
+      onConfirm: () => {
+        const val = document.getElementById('dashboard-info-input').value;
+        Store.setDashboardInfo(val);
+        Sync.autoSync();
+        App.closeModal();
+        // 只刷新信息栏部分
+        const display = document.getElementById('dashboard-info-display');
+        if (display) display.innerHTML = this._renderInfoDisplay();
+        App.toast('已保存');
+      }
     });
   },
 
