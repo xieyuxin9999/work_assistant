@@ -711,3 +711,14 @@ code {
   gap: 8px;
   z-index: 100;
 }
+
+/* ========== 未登录状态 ========== */
+body.not-logged-in .sidebar-nav .nav-item:not([data-route="settings"]) {
+  display: none;
+}
+body.not-logged-in .sidebar-footer {
+  display: none;
+}
+body.not-logged-in #bottom-nav {
+  display: none;
+}
