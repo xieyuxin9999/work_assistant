@@ -2,7 +2,7 @@
  * Service Worker — 离线缓存
  * 策略：网络优先（确保最新版本），离线回退缓存
  */
-const CACHE_NAME = 'dashboard-v9';
+const CACHE_NAME = 'dashboard-v10';
 const CACHE_URLS = [
   './',
   './index.html',
@@ -44,6 +44,13 @@ self.addEventListener('install', (event) => {
     })
   );
   self.skipWaiting();
+});
+
+// 监听页面发来的强制激活消息
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // 激活：清理旧缓存
