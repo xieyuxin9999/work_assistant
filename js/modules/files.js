@@ -241,6 +241,14 @@ window.Modules.Files = {
 
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
+        // 仓库已存在，直接使用
+        if (resp.status === 422) {
+          Store.setFileRepo(repoName);
+          await Sync.autoSync();
+          App.toast('已连接到已有仓库');
+          await this._loadSyncedFiles();
+          return;
+        }
         throw new Error(err.message || `HTTP ${resp.status}`);
       }
 
