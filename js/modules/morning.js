@@ -1,11 +1,11 @@
 /**
- * Morning Module — 上班准备（天气 + 物品检查合并）
+ * Morning Module — 上班准备（物品检查 + 天气合并）
+ * 布局：物品准备 → 天气（24小时）
  */
 window.Modules = window.Modules || {};
 window.Modules.Morning = {
   async render() {
     const settings = Store.getSettings();
-    const weather = await Modules.Weather._getWeather(settings);
     const checklist = Modules.Checklist._getData();
     const items = checklist.items || [];
     const checkedCount = items.filter(i => i.checked).length;
@@ -23,43 +23,12 @@ window.Modules.Morning = {
       <div class="page-header">
         <div>
           <div class="page-title">🌞 上班准备</div>
-          <div class="page-subtitle">${settings.city || '未设置城市'} · ${checkedCount}/${items.length} 物品已检查</div>
+          <div class="page-subtitle">${checkedCount}/${items.length} 物品已检查</div>
         </div>
         <button class="btn btn-secondary" id="morning-refresh">↻ 刷新天气</button>
       </div>
 
-      <!-- 天气区域 -->
-      <div class="card mb-24">
-        <div class="card-header">
-          <div class="card-title">🌤️ 今日天气</div>
-        </div>
-        ${weather ? Modules.Weather._renderWeather(weather, settings) : `
-          <div class="text-center text-muted py-16">
-            无法获取天气数据，请检查网络
-          </div>
-        `}
-      </div>
-
-      <!-- 城市管理（折叠） -->
-      <div class="card mb-24">
-        <div class="card-header">
-          <div class="card-title">🏙️ 城市管理</div>
-        </div>
-        <div class="flex gap-8 mb-16">
-          <input type="text" class="form-input" id="city-input" placeholder="搜索城市名（如：北京、上海）">
-          <button class="btn btn-primary" id="city-search-btn">搜索</button>
-        </div>
-        <div id="city-results"></div>
-        <div class="divider"></div>
-        <div class="text-secondary mb-8" style="font-size:13px">当前城市</div>
-        <div class="list-item">
-          <span style="font-size:24px">📍</span>
-          <span class="flex-1" style="font-weight:500">${settings.city || '未设置'}</span>
-          ${settings.city ? `<button class="btn-text" id="city-reset">重置为北京</button>` : ''}
-        </div>
-      </div>
-
-      <!-- 检查单区域 -->
+      <!-- 物品准备区域 -->
       <div class="page-header" style="margin-top:8px">
         <div>
           <div class="page-title" style="font-size:18px">🎒 上班物品</div>
@@ -95,6 +64,29 @@ window.Modules.Morning = {
           </div>
         `).join('')}
       `}
+
+      <!-- 天气区域 -->
+      <div class="card mt-24" id="weather-card">
+        <div class="card-header">
+          <div class="card-title">🌤️ 天气</div>
+        </div>
+        <div id="weather-content">
+          <div class="text-center text-muted py-16">加载中...</div>
+        </div>
+      </div>
+
+      <!-- 城市切换弹窗（默认隐藏） -->
+      <div id="city-popup" style="display:none">
+        <div class="card" style="margin-top:12px">
+          <div class="flex gap-8 mb-12">
+            <input type="text" class="form-input" id="city-input" placeholder="搜索城市名（如：北京、上海）">
+            <button class="btn btn-primary btn-sm" id="city-search-btn">搜索</button>
+          </div>
+          <div id="city-results"></div>
+          <div class="divider"></div>
+          <button class="btn btn-secondary btn-sm btn-block" id="city-locate">📍 使用当前位置定位</button>
+        </div>
+      </div>
     `;
   },
 
@@ -106,9 +98,18 @@ window.Modules.Morning = {
       settings.weatherCache = null;
       settings.weatherCacheTime = 0;
       Store.setSettings(settings);
-      await this._reload();
+      await this._loadWeather();
       App.toast('天气已刷新');
     });
+
+    // 城市切换按钮
+    const cityBtn = document.getElementById('weather-city-btn');
+    const cityPopup = document.getElementById('city-popup');
+    if (cityBtn && cityPopup) {
+      cityBtn.addEventListener('click', () => {
+        cityPopup.style.display = cityPopup.style.display === 'none' ? 'block' : 'none';
+      });
+    }
 
     // 城市搜索
     const searchBtn = document.getElementById('city-search-btn');
@@ -118,16 +119,16 @@ window.Modules.Morning = {
     const doSearch = async () => {
       const name = cityInput.value.trim();
       if (!name) return;
-      resultsDiv.innerHTML = '<div class="text-muted text-center mt-8">搜索中...</div>';
+      resultsDiv.innerHTML = '<div class="text-muted text-center mt-8" style="font-size:13px">搜索中...</div>';
       const results = await Modules.Weather._searchCity(name);
       if (results.length === 0) {
-        resultsDiv.innerHTML = '<div class="text-muted text-center mt-8">未找到城市</div>';
+        resultsDiv.innerHTML = '<div class="text-muted text-center mt-8" style="font-size:13px">未找到城市</div>';
         return;
       }
       resultsDiv.innerHTML = results.map(r => `
-        <div class="list-item" data-lat="${r.latitude}" data-lon="${r.longitude}" data-name="${r.name}${r.admin1?', '+r.admin1:''}">
+        <div class="list-item" data-lat="${r.latitude}" data-lon="${r.longitude}" data-name="${r.name}${r.admin1?', '+r.admin1:''}" style="cursor:pointer">
           <span>📍</span>
-          <span class="flex-1">${r.name}${r.admin1?', '+r.admin1:''}${r.country?', '+r.country:''}</span>
+          <span class="flex-1" style="font-size:13px">${r.name}${r.admin1?', '+r.admin1:''}${r.country?', '+r.country:''}</span>
           <button class="btn-text">选择</button>
         </div>
       `).join('');
@@ -141,7 +142,9 @@ window.Modules.Morning = {
           settings.weatherCache = null;
           settings.weatherCacheTime = 0;
           Store.setSettings(settings);
-          await this._reload();
+          await Sync.autoSync();
+          await this._loadWeather();
+          cityPopup.style.display = 'none';
           App.toast('已切换城市');
         });
       });
@@ -152,18 +155,31 @@ window.Modules.Morning = {
       if (e.key === 'Enter') doSearch();
     });
 
-    const resetCityBtn = document.getElementById('city-reset');
-    if (resetCityBtn) resetCityBtn.addEventListener('click', async () => {
-      const settings = Store.getSettings();
-      settings.city = '北京';
-      settings.cityLat = 39.9042;
-      settings.cityLon = 116.4074;
-      settings.weatherCache = null;
-      settings.weatherCacheTime = 0;
-      Store.setSettings(settings);
-      await this._reload();
-      App.toast('已重置');
+    // 定位按钮
+    const locateBtn = document.getElementById('city-locate');
+    if (locateBtn) locateBtn.addEventListener('click', async () => {
+      locateBtn.textContent = '📍 定位中...';
+      try {
+        const loc = await Modules.Weather._getCurrentLocation();
+        const settings = Store.getSettings();
+        settings.city = loc.city;
+        settings.cityLat = loc.lat;
+        settings.cityLon = loc.lon;
+        settings.weatherCache = null;
+        settings.weatherCacheTime = 0;
+        Store.setSettings(settings);
+        await Sync.autoSync();
+        await this._loadWeather();
+        cityPopup.style.display = 'none';
+        App.toast('已定位到 ' + loc.city);
+      } catch (e) {
+        App.toast('定位失败: ' + e.message);
+      }
+      locateBtn.textContent = '📍 使用当前位置定位';
     });
+
+    // 加载天气
+    await this._loadWeather();
 
     // 检查单操作
     const checklistReset = document.getElementById('checklist-reset');
@@ -173,6 +189,7 @@ window.Modules.Morning = {
       data.items.forEach(i => i.checked = false);
       data.updatedAt = Date.now();
       Store.setChecklist(data);
+      Sync.autoSync();
       this._reload();
       App.toast('已重置');
     });
@@ -192,6 +209,28 @@ window.Modules.Morning = {
     });
   },
 
+  async _loadWeather() {
+    const content = document.getElementById('weather-content');
+    if (!content) return;
+
+    const settings = Store.getSettings();
+    const weather = await Modules.Weather._getWeather(settings);
+
+    if (weather) {
+      content.innerHTML = Modules.Weather.renderHourlyWeather(weather, settings);
+      // 绑定城市按钮
+      const cityBtn = document.getElementById('weather-city-btn');
+      const cityPopup = document.getElementById('city-popup');
+      if (cityBtn && cityPopup) {
+        cityBtn.addEventListener('click', () => {
+          cityPopup.style.display = cityPopup.style.display === 'none' ? 'block' : 'none';
+        });
+      }
+    } else {
+      content.innerHTML = '<div class="text-center text-muted py-16">无法获取天气数据，请检查网络</div>';
+    }
+  },
+
   _toggleItem(id) {
     const data = Store.getChecklist();
     const item = data.items.find(i => i.id === id);
@@ -199,6 +238,7 @@ window.Modules.Morning = {
       item.checked = !item.checked;
       data.updatedAt = Date.now();
       Store.setChecklist(data);
+      Sync.autoSync();
       this._reload();
       if (data.items.every(i => i.checked)) {
         App.toast('全部带齐！🎉');
@@ -212,6 +252,7 @@ window.Modules.Morning = {
     data.items = data.items.filter(i => i.id !== id);
     data.updatedAt = Date.now();
     Store.setChecklist(data);
+    Sync.autoSync();
     this._reload();
     App.toast('已删除');
   },
@@ -246,6 +287,7 @@ window.Modules.Morning = {
         });
         data.updatedAt = Date.now();
         Store.setChecklist(data);
+        Sync.autoSync();
         App.closeModal();
         this._reload();
         App.toast('已添加');
