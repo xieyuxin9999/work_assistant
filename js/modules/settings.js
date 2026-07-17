@@ -402,6 +402,7 @@ window.Modules.Settings = {
   },
 
   async _reload() {
+    App._updateNavVisibility();
     const view = document.getElementById('view');
     view.innerHTML = await this.render();
     await this.init();
