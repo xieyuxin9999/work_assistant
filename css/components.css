@@ -313,6 +313,36 @@
   border: 2px solid var(--primary);
 }
 
+/* 列表式打卡 — 迷你周视图 */
+.habit-row {
+  border-bottom: 1px solid var(--border-light);
+}
+.habit-row:last-child { border-bottom: none; }
+
+.habit-mini-week {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.habit-mini-cell {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background: var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.habit-mini-cell.done {
+  background: var(--success);
+  color: #fff;
+}
+.habit-mini-cell.today {
+  border: 2px solid var(--primary);
+}
+
 /* ========== 进度条 ========== */
 .progress-bar {
   height: 6px;
@@ -349,9 +379,74 @@
 .drop-zone-icon { font-size: 36px; margin-bottom: 8px; }
 
 /* ========== 天气 ========== */
-.weather-icon { font-size: 48px; }
-.weather-temp { font-size: 36px; font-weight: 300; }
+.weather-icon { font-size: 40px; }
+.weather-temp { font-size: 32px; font-weight: 300; }
 .weather-desc { color: var(--text-secondary); font-size: 14px; }
+
+.weather-current-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.weather-current-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.weather-current-extra {
+  display: flex;
+  gap: 12px;
+}
+.weather-city-btn {
+  margin-left: auto;
+  padding: 4px 12px;
+  border-radius: 16px;
+  background: var(--surface-hover);
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.weather-city-btn:hover {
+  background: var(--primary-bg);
+  color: var(--primary);
+}
+
+.weather-hourly-scroll {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.weather-hour-cell {
+  flex-shrink: 0;
+  width: 52px;
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+  transition: background var(--transition);
+}
+.weather-hour-cell.now {
+  background: var(--primary-bg);
+}
+.weather-hour-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.weather-hour-icon {
+  font-size: 20px;
+  margin: 4px 0;
+}
+.weather-hour-temp {
+  font-size: 13px;
+  font-weight: 600;
+}
 
 /* ========== 分割线 ========== */
 .divider {
@@ -586,6 +681,16 @@ code {
 .afterwork-todos, .afterwork-notes {
   min-width: 0;
 }
+
+/* ========== 待办+日程面板 ========== */
+.todo-schedule-panel {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+.todo-section { min-width: 0; }
+.schedule-section { min-width: 0; }
 
 /* ========== 文件管理器 ========== */
 .file-section { margin-bottom: 8px; }
