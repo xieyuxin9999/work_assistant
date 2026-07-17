@@ -81,6 +81,22 @@ const Store = {
     this.set('fileRepo', repo);
   },
 
+  // 仪表盘信息栏
+  getDashboardInfo() {
+    return this.get('dashboardInfo', '');
+  },
+  setDashboardInfo(text) {
+    this.set('dashboardInfo', text);
+  },
+
+  // 日程（待办模块的日程区域）
+  getSchedules() {
+    return this.get('schedules', []);
+  },
+  setSchedules(schedules) {
+    this.set('schedules', schedules);
+  },
+
   // 设置
   getSettings() {
     return this.get('settings', {
