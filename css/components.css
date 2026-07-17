@@ -685,7 +685,7 @@ code {
 /* ========== 待办+日程面板 ========== */
 .todo-schedule-panel {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 3fr 2fr;
   gap: 20px;
   align-items: start;
 }
