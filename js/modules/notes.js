@@ -105,6 +105,7 @@ window.Modules.Notes = {
           <h2 style="font-size:22px;font-weight:700;flex:1">${this._escape(note.title || '无标题')}</h2>
           <div class="flex gap-8">
             <button class="btn btn-primary" id="note-edit">编辑</button>
+            <button class="btn btn-secondary" id="note-save-preview">保存</button>
             <button class="btn-icon" id="note-pin" title="${note.pinned?'取消置顶':'置顶'}">${note.pinned?'📌':'📍'}</button>
             <button class="btn-icon" id="note-delete" title="删除">🗑️</button>
           </div>
@@ -170,6 +171,13 @@ window.Modules.Notes = {
       this.editMode = false;
       await this._refreshEditor();
       App.toast('已保存');
+    });
+
+    const savePreviewBtn = document.getElementById('note-save-preview');
+    if (savePreviewBtn) savePreviewBtn.addEventListener('click', async () => {
+      await this._saveCurrent();
+      App.toast('已保存');
+      Sync.autoSync();
     });
 
     const pinBtn = document.getElementById('note-pin');
