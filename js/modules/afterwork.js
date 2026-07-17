@@ -76,6 +76,9 @@ window.Modules.Afterwork = {
           <div class="card-title">📝 生活笔记</div>
           <button class="btn btn-primary btn-sm" id="afterwork-note-new">+ 新建</button>
         </div>
+        <div class="flex gap-8 mb-12">
+          <input type="text" class="form-input" id="afterwork-note-quick-input" placeholder="快速记录，回车新建..." maxlength="50">
+        </div>
         ${this.notes.length === 0 ? `
           <div class="text-center text-muted py-16" style="font-size:13px">
             还没有笔记，记录你的灵感吧
@@ -157,6 +160,14 @@ window.Modules.Afterwork = {
     const newNoteBtn = document.getElementById('afterwork-note-new');
     if (newNoteBtn) newNoteBtn.addEventListener('click', () => this._newNote());
 
+    // 快速新建笔记（回车）
+    const quickInput = document.getElementById('afterwork-note-quick-input');
+    if (quickInput) {
+      quickInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') this._quickNewNote();
+      });
+    }
+
     // 编辑器
     const backBtn = document.getElementById('note-back');
     if (backBtn) backBtn.addEventListener('click', () => this._saveAndBack());
@@ -236,6 +247,24 @@ window.Modules.Afterwork = {
     await DB.put('afterworkNotes', note);
     this.currentNoteId = note.id;
     this._reload();
+  },
+
+  async _quickNewNote() {
+    const input = document.getElementById('afterwork-note-quick-input');
+    const title = input.value.trim();
+    if (!title) return;
+    const note = {
+      id: Date.now().toString(),
+      title,
+      content: '',
+      tags: [],
+      pinned: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    await DB.put('afterworkNotes', note);
+    this._reload();
+    App.toast('已添加');
   },
 
   async _saveNote() {
