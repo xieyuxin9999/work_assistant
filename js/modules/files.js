@@ -390,13 +390,43 @@ window.Modules.Files = {
   },
 
   async _deleteSyncedFile(filename, sha) {
-    if (!confirm(`确定删除 ${filename} 吗？`)) return;
-
     const config = Sync.getConfig();
     const fileRepo = Store.getFileRepo();
     if (!fileRepo) return;
 
     try {
+      // 先下载文件内容，存入 IndexedDB（供垃圾箱恢复）
+      let fileContent = null;
+      let fileSize = 0;
+      try {
+        const dlResp = await fetch(
+          `https://api.github.com/repos/${config.username}/${fileRepo}/contents/${encodeURIComponent(filename)}`,
+          { headers: { 'Authorization': `token ${config.token}`, 'Accept': 'application/vnd.github.v3+json' } }
+        );
+        if (dlResp.ok) {
+          const dlData = await dlResp.json();
+          fileContent = dlData.content.replace(/\n/g, '');
+          fileSize = dlData.size;
+        }
+      } catch (e) {
+        // 下载失败也继续删除
+      }
+
+      // 存入 IndexedDB 供垃圾箱
+      if (fileContent) {
+        await DB.put('files', {
+          id: 'sync_' + Date.now(),
+          name: filename,
+          content: fileContent,
+          size: fileSize,
+          deleted: true,
+          deletedAt: Date.now(),
+          fromSync: true,
+          updatedAt: Date.now(),
+        });
+      }
+
+      // 从 GitHub 删除
       const resp = await fetch(
         `https://api.github.com/repos/${config.username}/${fileRepo}/contents/${encodeURIComponent(filename)}`,
         {
@@ -417,11 +447,15 @@ window.Modules.Files = {
         throw new Error(err.message || `HTTP ${resp.status}`);
       }
 
+      // 立即从本地列表移除并刷新
+      this.syncedFiles = this.syncedFiles.filter(f => f.name !== filename);
+      this._renderSyncedFilesList();
       App.toast('已删除');
-      await this._loadSyncedFiles();
     } catch (e) {
       console.error('Delete error:', e);
       App.toast(`删除失败: ${e.message}`);
+      // 刷新列表以确保 UI 一致
+      await this._loadSyncedFiles();
     }
   },
 
