@@ -39,7 +39,7 @@ window.Modules.Files = {
             <span class="tag-success">GitHub 仓库</span>
           </div>
           <div class="text-muted mb-12" style="font-size:12px">
-            轻量文档同步，手机和电脑都能访问。单文件建议 &lt; 5MB。
+            轻量文档同步，手机和电脑都能访问。单文件限制 &lt; 1MB（GitHub API 限制）。
           </div>
           <div id="synced-files-area">
             ${this._renderSyncedFilesPlaceholder()}
@@ -270,8 +270,9 @@ window.Modules.Files = {
     const fileRepo = Store.getFileRepo();
     if (!fileRepo) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      App.toast(`${file.name} 超过 5MB，已跳过`);
+    // GitHub Contents API 限制 1MB
+    if (file.size > 1024 * 1024) {
+      App.toast(`${file.name} 超过 1MB 限制（当前 ${this._formatSize(file.size)}），已跳过`);
       return;
     }
 
@@ -298,7 +299,45 @@ window.Modules.Files = {
 
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
-        throw new Error(err.message || `HTTP ${resp.status}`);
+        // 文件已存在 → 先获取 sha 再更新
+        if (resp.status === 422 || (err.message && err.message.includes('already exists'))) {
+          App.toast(`${file.name} 已存在，正在更新...`);
+          const shaResp = await fetch(
+            `https://api.github.com/repos/${config.username}/${fileRepo}/contents/${encodeURIComponent(file.name)}`,
+            {
+              headers: {
+                'Authorization': `token ${config.token}`,
+                'Accept': 'application/vnd.github.v3+json',
+              },
+            }
+          );
+          if (shaResp.ok) {
+            const shaData = await shaResp.json();
+            const updateResp = await fetch(
+              `https://api.github.com/repos/${config.username}/${fileRepo}/contents/${encodeURIComponent(file.name)}`,
+              {
+                method: 'PUT',
+                headers: {
+                  'Authorization': `token ${config.token}`,
+                  'Accept': 'application/vnd.github.v3+json',
+                },
+                body: JSON.stringify({
+                  message: `update ${file.name}`,
+                  content: base64,
+                  sha: shaData.sha,
+                }),
+              }
+            );
+            if (!updateResp.ok) {
+              const err2 = await updateResp.json().catch(() => ({}));
+              throw new Error(err2.message || `HTTP ${updateResp.status}`);
+            }
+          } else {
+            throw new Error('无法获取文件信息');
+          }
+        } else {
+          throw new Error(err.message || `HTTP ${resp.status}`);
+        }
       }
 
       App.toast(`已上传 ${file.name}`);
