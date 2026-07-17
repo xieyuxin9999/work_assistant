@@ -230,6 +230,11 @@ window.Modules.Settings = {
     App.toast('正在登录...');
     (async () => {
       try {
+        // 如果当前已登录其他账号，先清除本地数据
+        if (Sync.getStatus().configured) {
+          await Sync.clearLocalData();
+          Store.remove('syncConfig');
+        }
         await Sync.connectGist(username, pwd);
         App.toast('登录成功！正在同步...');
         await this._doSync();
@@ -261,6 +266,11 @@ window.Modules.Settings = {
     App.toast('正在注册...');
     (async () => {
       try {
+        // 如果当前已登录其他账号，先清除本地数据
+        if (Sync.getStatus().configured) {
+          await Sync.clearLocalData();
+          Store.remove('syncConfig');
+        }
         await Sync.createGist(username, token, pwd);
         await this._doSync();
         App.toast('注册成功！🎉');
@@ -344,9 +354,10 @@ window.Modules.Settings = {
     });
   },
 
-  _disconnect() {
-    if (!confirm('退出登录？本地数据不会丢失，但不再自动同步。')) return;
-    Sync.disconnect();
+  async _disconnect() {
+    if (!confirm('退出登录？\n\n所有本地数据（待办、笔记、习惯等）将被清除。\n下次登录时会从云端重新拉取数据。')) return;
+    App.toast('正在清除数据...');
+    await Sync.disconnect();
     App.toast('已退出登录');
     this._reload();
   },
