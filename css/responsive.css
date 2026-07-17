@@ -180,11 +180,23 @@
 
   /* 天气温度 */
   .weather-temp { font-size: 28px; }
-  .weather-icon { font-size: 40px; }
+  .weather-icon { font-size: 36px; }
+  .weather-current-row { gap: 10px; }
+  .weather-city-btn { font-size: 11px; padding: 3px 10px; }
 
   /* 下班生活面板变单列 */
   .afterwork-panel {
     grid-template-columns: 1fr;
+  }
+
+  /* 待办+日程面板变单列 */
+  .todo-schedule-panel {
+    grid-template-columns: 1fr;
+  }
+
+  /* 打卡列表在手机端隐藏迷你周视图 */
+  .habit-mini-week {
+    display: none;
   }
 
   /* 文件树在移动端不需要特殊处理，自动堆叠 */
